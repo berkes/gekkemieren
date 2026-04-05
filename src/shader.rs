@@ -1,6 +1,6 @@
 use wgpu::{self, util::DeviceExt};
 
-use crate::texture::Texture;
+use crate::{camera::CameraUniform, texture::Texture};
 
 // const VERTICES: &[Vertex] = &[
 //     // Vertex {
@@ -124,13 +124,14 @@ impl ShaderManager {
     pub fn create_render_pipeline(
         &self,
         config: &wgpu::SurfaceConfiguration,
+        bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
     ) -> wgpu::RenderPipeline {
         let shader = self.create_shader_module();
         let render_pipeline_layout =
             self.device
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
-                    bind_group_layouts: &[Some(&self.create_bind_group_layout())],
+                    bind_group_layouts: bind_group_layouts,
                     immediate_size: 0,
                 });
 
@@ -193,10 +194,11 @@ impl ShaderManager {
 
     pub(crate) fn create_bind_group(
         &self,
+        bind_group_layout: &wgpu::BindGroupLayout,
         diffuse_texture: &Texture,
     ) -> wgpu::BindGroup {
         self.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.create_bind_group_layout(),
+            layout: bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -237,5 +239,13 @@ impl ShaderManager {
                 ],
                 label: Some("texture_bind_group_layout"),
             });
+    }
+
+    pub(crate) fn create_buffer_init(&self, camera_uniform: CameraUniform) -> wgpu::Buffer {
+        self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("camera_uniform_buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        })
     }
 }

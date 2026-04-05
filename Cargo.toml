@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.102"
 bytemuck = { version = "1.25.0", features = ["derive"] }
+cgmath = "0.18.0"
 env_logger = "0.11.10"
 image = { version = "0.25.10", features = ["png", "jpeg"], default-features = false }
 log = "0.4.29"

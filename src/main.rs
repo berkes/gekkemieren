@@ -1,4 +1,5 @@
 mod app;
+mod camera;
 mod shader;
 mod texture;
 mod wgpu_setup;
