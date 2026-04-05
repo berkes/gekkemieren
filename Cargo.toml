@@ -7,6 +7,7 @@ edition = "2024"
 anyhow = "1.0.102"
 bytemuck = { version = "1.25.0", features = ["derive"] }
 env_logger = "0.11.10"
+image = { version = "0.25.10", features = ["png", "jpeg"], default-features = false }
 log = "0.4.29"
 pollster = "0.4.0"
 wgpu = "29.0.1"

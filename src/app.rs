@@ -9,6 +9,7 @@ use winit::{
 
 use crate::{
     shader::{INDICES, ShaderManager},
+    texture::Texture,
     wgpu_setup::WgpuSetup,
 };
 
@@ -20,6 +21,9 @@ pub struct State {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+    diffuse_bind_group: wgpu::BindGroup,
+    #[allow(unused)]
+    diffuse_texture: Texture,
     mouse_position: winit::dpi::PhysicalPosition<f64>,
     start_time: std::time::Instant,
     is_surface_configured: bool,
@@ -29,13 +33,18 @@ impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
         let shader_manager = ShaderManager::new(wgpu_setup.device.clone());
-        let render_pipeline =
-            shader_manager.create_render_pipeline(&wgpu_setup.device, &wgpu_setup.config);
         let (vertex_buffer, index_buffer) = shader_manager.create_buffers();
         let num_indices = INDICES.len() as u32;
 
-        // let diffuse_bytes = include_bytes!("tree.jpg");
-        // let diffuse_texture = shader_manager.create_texture(diffuse_bytes);
+        let diffuse_bytes = include_bytes!("tree.jpg");
+        let diffuse_texture = Texture::from_bytes(
+            &wgpu_setup.device,
+            &wgpu_setup.queue,
+            diffuse_bytes,
+            "tree.jpg",
+        )?;
+        let diffuse_bind_group = shader_manager.create_bind_group(&diffuse_texture);
+        let render_pipeline = shader_manager.create_render_pipeline(&wgpu_setup.config);
 
         Ok(Self {
             window,
@@ -44,6 +53,8 @@ impl State {
             index_buffer,
             vertex_buffer,
             num_indices,
+            diffuse_bind_group,
+            diffuse_texture,
 
             start_time: std::time::Instant::now(),
             mouse_position: winit::dpi::PhysicalPosition::default(),
@@ -129,6 +140,7 @@ impl State {
                 multiview_mask: None,
             });
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
