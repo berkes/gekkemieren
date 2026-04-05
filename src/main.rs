@@ -16,6 +16,7 @@ pub struct State {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
+    render_pipeline: wgpu::RenderPipeline,
     mouse_position: PhysicalPosition<f64>,
     start_time: Instant,
     is_surface_configured: bool,
@@ -76,12 +77,58 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
+        let shader = device.create_shader_module(wgpu::include_wgsl!("shader.wgsl"));
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[],
+                immediate_size: 0,
+            });
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview_mask: None,
+            cache: None,
+        });
+
         Ok(Self {
             window,
             surface,
             device,
             queue,
             config,
+            render_pipeline,
             start_time: Instant::now(),
             mouse_position: PhysicalPosition::default(),
             is_surface_configured: false,
@@ -148,7 +195,7 @@ impl State {
             // Get blue from the time.
             let blue = (self.start_time.elapsed().as_secs_f64() * 0.5).sin() * 0.5 + 0.5;
 
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -169,6 +216,8 @@ impl State {
                 timestamp_writes: None,
                 multiview_mask: None,
             });
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
         // submit will accept anything that implements IntoIter
@@ -185,7 +234,11 @@ impl State {
         }
     }
 
-    fn handle_mouse_move(&mut self, _event_loop: &ActiveEventLoop, position: PhysicalPosition<f64>) {
+    fn handle_mouse_move(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        position: PhysicalPosition<f64>,
+    ) {
         self.mouse_position = position;
     }
 }
@@ -248,7 +301,10 @@ impl ApplicationHandler<State> for App {
                     },
                 ..
             } => state.handle_key(event_loop, code, key_state.is_pressed()),
-            WindowEvent::CursorMoved { device_id: _, position } => state.handle_mouse_move(event_loop, position),
+            WindowEvent::CursorMoved {
+                device_id: _,
+                position,
+            } => state.handle_mouse_move(event_loop, position),
             _ => {}
         }
     }
