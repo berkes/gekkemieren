@@ -7,13 +7,19 @@ use winit::{
     window::Window,
 };
 
-use crate::{shader::ShaderManager, wgpu_setup::WgpuSetup};
+use crate::{
+    shader::{INDICES, ShaderManager},
+    wgpu_setup::WgpuSetup,
+};
 
 #[derive(Debug)]
 pub struct State {
     window: Arc<Window>,
     wgpu_setup: WgpuSetup,
     render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
     mouse_position: winit::dpi::PhysicalPosition<f64>,
     start_time: std::time::Instant,
     is_surface_configured: bool,
@@ -23,15 +29,22 @@ impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
         let shader_manager = ShaderManager::new(wgpu_setup.device.clone());
-        let render_pipeline = shader_manager.create_render_pipeline(
-            &wgpu_setup.device,
-            &wgpu_setup.config,
-        );
+        let render_pipeline =
+            shader_manager.create_render_pipeline(&wgpu_setup.device, &wgpu_setup.config);
+        let (vertex_buffer, index_buffer) = shader_manager.create_buffers();
+        let num_indices = INDICES.len() as u32;
+
+        // let diffuse_bytes = include_bytes!("tree.jpg");
+        // let diffuse_texture = shader_manager.create_texture(diffuse_bytes);
 
         Ok(Self {
             window,
             wgpu_setup,
             render_pipeline,
+            index_buffer,
+            vertex_buffer,
+            num_indices,
+
             start_time: std::time::Instant::now(),
             mouse_position: winit::dpi::PhysicalPosition::default(),
             is_surface_configured: false,
@@ -82,12 +95,12 @@ impl State {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self
-            .wgpu_setup
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+        let mut encoder =
+            self.wgpu_setup
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
         {
             let red = self.mouse_position.x / self.window.inner_size().width as f64;
@@ -116,10 +129,14 @@ impl State {
                 multiview_mask: None,
             });
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw(0..3, 0..1);
+            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
-        self.wgpu_setup.queue.submit(std::iter::once(encoder.finish()));
+        self.wgpu_setup
+            .queue
+            .submit(std::iter::once(encoder.finish()));
         output.present();
 
         Ok(())
@@ -156,9 +173,9 @@ impl ApplicationHandler<State> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         let window_attributes = Window::default_attributes()
             .with_title("Gekke Mieren")
-            .with_inner_size(winit::dpi::Size::Physical(
-                winit::dpi::PhysicalSize::new(1024, 768),
-            ));
+            .with_inner_size(winit::dpi::Size::Physical(winit::dpi::PhysicalSize::new(
+                1024, 768,
+            )));
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         self.state = Some(pollster::block_on(State::new(window)).unwrap());
