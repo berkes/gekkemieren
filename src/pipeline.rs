@@ -206,7 +206,7 @@ impl Pipeline {
                 compilation_options: Default::default(),
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: wgpu::PrimitiveTopology::PointList,
                 ..Default::default()
             },
             depth_stencil: None,
@@ -220,7 +220,6 @@ impl Pipeline {
             layout: &render_pipeline.get_bind_group_layout(0),
             entries: &[
                 wgpu::BindGroupEntry { binding: 0, resource: ant_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: config_buffer.as_entire_binding() },
             ],
         });
 
@@ -349,6 +348,6 @@ impl Pipeline {
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
-        render_pass.draw(0..6, 0..self.spawner.ant_count as u32);
+        render_pass.draw(0..1, 0..self.spawner.ant_count as u32);
     }
 }
