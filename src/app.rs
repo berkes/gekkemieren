@@ -15,6 +15,8 @@ pub struct State {
     wgpu_setup: WgpuSetup,
     pipeline: Pipeline,
     is_surface_configured: bool,
+    frame_count: u32,
+    fps_timer: std::time::Instant,
 }
 
 impl State {
@@ -27,6 +29,8 @@ impl State {
             wgpu_setup,
             pipeline,
             is_surface_configured: false,
+            frame_count: 0,
+            fps_timer: std::time::Instant::now(),
         })
     }
 
@@ -37,6 +41,13 @@ impl State {
 
     fn render(&mut self) -> anyhow::Result<()> {
         self.window.request_redraw();
+        self.frame_count += 1;
+        if self.fps_timer.elapsed().as_secs_f32() >= 1.0 {
+            #[cfg(debug_assertions)]
+            println!("fps: {}", self.frame_count);
+            self.frame_count = 0;
+            self.fps_timer = std::time::Instant::now();
+        }
 
         if !self.is_surface_configured {
             return Ok(());

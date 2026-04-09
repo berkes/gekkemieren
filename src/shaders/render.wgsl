@@ -12,7 +12,7 @@ const QUAD_CORNERS = array<vec2<f32>, 6>(
     vec2( 1.0, -1.0), vec2( 1.0,  1.0), vec2(-1.0,  1.0),
 );
 
-const DOT_RADIUS: f32 = 0.002;
+const DOT_RADIUS: f32 = 0.001;
 
 @vertex
 fn vs_main(

@@ -1,5 +1,10 @@
 use crate::ant::{Ant, AntType};
 
+// Main configuration parameters
+const BASE_SPEED: f32 = 0.0015;
+const SPEED_VARIATION: f32 = 0.001;
+const N_ANTS: usize = 10000;
+
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.
 #[repr(C)]
@@ -37,9 +42,6 @@ impl Spawner {
         use rand::RngExt;
         use std::f32::consts::TAU;
 
-        const BASE_SPEED: f32 = 0.0002;
-        const SPEED_VARIATION: f32 = 0.0001;
-
         let mut rng = rand::rng();
         let [cx, cy] = self.colony.center;
         let hs = self.colony.half_size;
@@ -59,6 +61,6 @@ impl Spawner {
 
 impl Default for Spawner {
     fn default() -> Self {
-        Self::new(Colony::default(), 1000)
+        Self::new(Colony::default(), N_ANTS)
     }
 }
