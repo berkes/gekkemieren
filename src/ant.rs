@@ -18,7 +18,8 @@ pub struct Ant {
     pub position: [f32; 2],
     pub direction: [f32; 2],
     pub ant_type: u32,
-    pub _pad: u32,
+    /// 0 = inside colony (collision suppressed), 1 = has emerged
+    pub emerged: u32,
 }
 
 impl Ant {
@@ -27,26 +28,32 @@ impl Ant {
             position,
             direction,
             ant_type: ant_type.as_u32(),
-            _pad: 0,
+            emerged: 0,
         }
     }
 }
 
 pub fn initial_ants(count: usize) -> Vec<Ant> {
-    use std::f32::consts::FRAC_PI_2;
+    use rand::RngExt;
+    use std::f32::consts::TAU;
+
+    const COLONY_HALF_SIZE: f32 = 0.02;
+    const BASE_SPEED: f32 = 0.0002;
+    const SPEED_VARIATION: f32 = 0.0001;
+
+    let mut rng = rand::rng();
     (0..count)
         .map(|i| {
-            let angle = (i as f32 / count as f32) * FRAC_PI_2;
+            let angle = rng.random::<f32>() * TAU;
+            let speed = BASE_SPEED + rng.random_range(-SPEED_VARIATION..SPEED_VARIATION);
             let ant_type = if i % 10 == 0 {
                 AntType::Scout
             } else {
                 AntType::Forager
             };
-            Ant::new(
-                [0.0, 0.0],
-                [angle.cos() * 0.0002, angle.sin() * 0.0002],
-                ant_type,
-            )
+            let x = 0.5 + rng.random_range(-COLONY_HALF_SIZE..COLONY_HALF_SIZE);
+            let y = 0.5 + rng.random_range(-COLONY_HALF_SIZE..COLONY_HALF_SIZE);
+            Ant::new([x, y], [angle.cos() * speed, angle.sin() * speed], ant_type)
         })
         .collect()
 }
