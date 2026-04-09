@@ -20,7 +20,11 @@ struct SimConfig {
     collision_radius: f32,
     collision_angle_min: f32,
     collision_angle_max: f32,
-    _pad: u32,
+    forager_randomness: f32,
+    scout_randomness: f32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
@@ -94,6 +98,11 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
+
+    let randomness = select(config.forager_randomness, config.scout_randomness, ant.ant_type == 1u);
+    let noise = hash(ant.position + vec2<f32>(f32(index) * 0.1, 0.0)) * 2.0 - 1.0;
+    ant.direction = rotate(ant.direction, noise * randomness);
+
     ants[index] = ant;
 
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);

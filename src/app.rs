@@ -20,6 +20,9 @@ const DOT_RADIUS: f32 = 0.001;
 const COLLISION_RADIUS: f32 = 0.0001;
 const COLLISION_ANGLE_MIN: f32 = 1.169_370_6; // 67deg
 const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
+const FORAGER_RANDOMNESS: f32 = 0.05;
+const SCOUT_RANDOMNESS: f32 = 0.4;
+const SCOUT_RATIO: f32 = 0.1;
 
 #[derive(Debug)]
 pub struct State {
@@ -42,9 +45,11 @@ impl State {
             collision_radius: COLLISION_RADIUS,
             collision_angle_min: COLLISION_ANGLE_MIN,
             collision_angle_max: COLLISION_ANGLE_MAX,
-            _pad: 0,
+            forager_randomness: FORAGER_RANDOMNESS,
+            scout_randomness: SCOUT_RANDOMNESS,
+            _pad: [0; 3],
         };
-        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config)?;
+        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config, SCOUT_RATIO)?;
 
         Ok(Self {
             window,

@@ -16,5 +16,7 @@ pub struct SimConfig {
     pub collision_radius: f32,
     pub collision_angle_min: f32,
     pub collision_angle_max: f32,
-    pub _pad: u32,
+    pub forager_randomness: f32,
+    pub scout_randomness: f32,
+    pub _pad: [u32; 3],
 }

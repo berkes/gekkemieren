@@ -9,7 +9,15 @@ struct SimConfig {
     decay_amount: u32,
     max_strength: u32,
     deposit_amount: u32,
-    _pad: u32,
+    dot_radius: f32,
+    collision_radius: f32,
+    collision_angle_min: f32,
+    collision_angle_max: f32,
+    forager_randomness: f32,
+    scout_randomness: f32,
+    _pad1: u32,
+    _pad2: u32,
+    _pad3: u32,
 }
 
 @group(0) @binding(0) var<storage, read> pheromone_grid: array<u32>;

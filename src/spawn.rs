@@ -1,9 +1,8 @@
 use crate::ant::{Ant, AntType};
 
-// Main configuration parameters
 const BASE_SPEED: f32 = 0.0015;
 const SPEED_VARIATION: f32 = 0.001;
-const N_ANTS: usize = 10000;
+pub const N_ANTS: usize = 10000;
 
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.
@@ -31,11 +30,12 @@ impl Default for Colony {
 pub struct Spawner {
     pub colony: Colony,
     pub ant_count: usize,
+    pub scout_ratio: f32,
 }
 
 impl Spawner {
-    pub fn new(colony: Colony, ant_count: usize) -> Self {
-        Self { colony, ant_count }
+    pub fn new(colony: Colony, ant_count: usize, scout_ratio: f32) -> Self {
+        Self { colony, ant_count, scout_ratio }
     }
 
     pub fn initial_ants(&self) -> Vec<Ant> {
@@ -47,10 +47,14 @@ impl Spawner {
         let hs = self.colony.half_size;
 
         (0..self.ant_count)
-            .map(|i| {
+            .map(|_| {
                 let angle = rng.random::<f32>() * TAU;
                 let speed = BASE_SPEED + rng.random_range(-SPEED_VARIATION..SPEED_VARIATION);
-                let ant_type = if i % 10 == 0 { AntType::Scout } else { AntType::Forager };
+                let ant_type = if rng.random::<f32>() < self.scout_ratio {
+                    AntType::Scout
+                } else {
+                    AntType::Forager
+                };
                 let x = cx + rng.random_range(-hs..hs);
                 let y = cy + rng.random_range(-hs..hs);
                 Ant::new([x, y], [angle.cos() * speed, angle.sin() * speed], ant_type)
@@ -61,6 +65,6 @@ impl Spawner {
 
 impl Default for Spawner {
     fn default() -> Self {
-        Self::new(Colony::default(), N_ANTS)
+        Self::new(Colony::default(), N_ANTS, 0.1)
     }
 }
