@@ -7,7 +7,19 @@ use winit::{
     window::Window,
 };
 
-use crate::{pipeline::Pipeline, wgpu_setup::WgpuSetup};
+use crate::{
+    pheromone::SimConfig,
+    pipeline::Pipeline,
+    wgpu_setup::WgpuSetup,
+};
+
+const DECAY_AMOUNT: u32 = 1;
+const MAX_STRENGTH: u32 = 1000;
+const DEPOSIT_AMOUNT: u32 = 50;
+const DOT_RADIUS: f32 = 0.001;
+const COLLISION_RADIUS: f32 = 0.0001;
+const COLLISION_ANGLE_MIN: f32 = 1.169_370_6; // 67deg
+const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
 
 #[derive(Debug)]
 pub struct State {
@@ -22,7 +34,17 @@ pub struct State {
 impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
-        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config)?;
+        let sim_config = SimConfig {
+            decay_amount: DECAY_AMOUNT,
+            max_strength: MAX_STRENGTH,
+            deposit_amount: DEPOSIT_AMOUNT,
+            dot_radius: DOT_RADIUS,
+            collision_radius: COLLISION_RADIUS,
+            collision_angle_min: COLLISION_ANGLE_MIN,
+            collision_angle_max: COLLISION_ANGLE_MAX,
+            _pad: 0,
+        };
+        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config)?;
 
         Ok(Self {
             window,
@@ -36,6 +58,8 @@ impl State {
 
     fn resize(&mut self, width: u32, height: u32) {
         self.wgpu_setup.resize(width, height);
+        self.pipeline
+            .resize(&self.wgpu_setup.device, &self.wgpu_setup.queue, width, height);
         self.is_surface_configured = true;
     }
 
@@ -43,8 +67,7 @@ impl State {
         self.window.request_redraw();
         self.frame_count += 1;
         if self.fps_timer.elapsed().as_secs_f32() >= 1.0 {
-            #[cfg(debug_assertions)]
-            println!("fps: {}", self.frame_count);
+            log::debug!("fps: {}", self.frame_count);
             self.frame_count = 0;
             self.fps_timer = std::time::Instant::now();
         }

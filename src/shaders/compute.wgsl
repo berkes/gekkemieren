@@ -5,18 +5,35 @@ struct Ant {
     emerged: u32,
 }
 
-@group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
+struct GridInfo {
+    width: u32,
+    height: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
 
-const COLLISION_RADIUS: f32 = 0.0001;
-const COLLISION_ANGLE_MIN: f32 = 1.16937059884; // 67deg
-const COLLISION_ANGLE_MAX: f32 = 1.95476876223; // 112deg
+struct SimConfig {
+    decay_amount: u32,
+    max_strength: u32,
+    deposit_amount: u32,
+    dot_radius: f32,
+    collision_radius: f32,
+    collision_angle_min: f32,
+    collision_angle_max: f32,
+    _pad: u32,
+}
+
+@group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
+@group(0) @binding(2) var<storage, read_write> pheromone_grid: array<atomic<u32>>;
+@group(0) @binding(3) var<uniform> grid_info: GridInfo;
+@group(0) @binding(4) var<uniform> config: SimConfig;
 
 fn hash(v: vec2<f32>) -> f32 {
     return fract(sin(dot(v, vec2<f32>(127.1, 311.7))) * 43758.5453);
 }
 
 fn random_collision_angle(pos: vec2<f32>) -> f32 {
-    return COLLISION_ANGLE_MIN + hash(pos) * (COLLISION_ANGLE_MAX - COLLISION_ANGLE_MIN);
+    return config.collision_angle_min + hash(pos) * (config.collision_angle_max - config.collision_angle_min);
 }
 
 struct Colony {
@@ -56,7 +73,7 @@ fn collision_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     for (var i: u32 = 0u; i < count; i++) {
         if i == index { continue; }
-        if distance(pos, ants[i].position) < COLLISION_RADIUS {
+        if distance(pos, ants[i].position) < config.collision_radius {
             ants[index].direction = rotate(ant.direction, random_collision_angle(pos));
             break;
         }
@@ -77,6 +94,9 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
-
     ants[index] = ant;
+
+    let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
+    let cell_y = clamp(u32(ant.position.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
+    atomicAdd(&pheromone_grid[cell_y * grid_info.width + cell_x], config.deposit_amount);
 }

@@ -19,7 +19,9 @@ find and retrieve food and avoid obstructions.
 
 - **App** (`src/app.rs`): Main application state and event loop using winit/ApplicationHandler
 - **GPU setup** (`src/wgpu_setup.rs`): Boilerplate for WGPU
-- **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup
+- **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup. Uses shaders under `src/shaders`.
+- **Ant -or agent-** (`src/ant.rs`): Agent behaviour
+
 
 ## Development Notes
 
