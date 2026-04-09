@@ -13,8 +13,6 @@ pub struct Pipeline {
     index_buffer: wgpu::Buffer,
     num_indices: u32,
     diffuse_bind_group: wgpu::BindGroup,
-    #[allow(dead_code)] // held to keep GPU texture alive for the bind group
-    diffuse_texture: Texture,
     camera_bind_group: wgpu::BindGroup,
     pub camera_buffer: wgpu::Buffer,
 }
@@ -159,7 +157,6 @@ impl Pipeline {
             index_buffer,
             num_indices,
             diffuse_bind_group,
-            diffuse_texture,
             camera_bind_group,
             camera_buffer,
         })
