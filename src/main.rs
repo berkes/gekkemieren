@@ -1,5 +1,6 @@
 mod ant;
 mod app;
+mod color_scheme;
 mod pheromone;
 mod pipeline;
 mod spawn;

@@ -1,7 +1,7 @@
 use crate::ant::{Ant, AntType};
 
 const BASE_SPEED: f32 = 0.0015;
-pub const N_ANTS: usize = 10000;
+pub const N_ANTS: usize = 15000;
 
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.

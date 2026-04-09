@@ -1,5 +1,6 @@
 use wgpu::util::DeviceExt;
 
+use crate::color_scheme::ColorScheme;
 use crate::pheromone::{GridInfo, SimConfig};
 use crate::spawn::Spawner;
 
@@ -19,6 +20,8 @@ pub struct Pipeline {
     grid_info_buffer: wgpu::Buffer,
     pheromone_buffer: wgpu::Buffer,
     config_buffer: wgpu::Buffer,
+    color_scheme_buffer: wgpu::Buffer,
+    pub background_color: wgpu::Color,
     spawner: Spawner,
     grid_width: u32,
     grid_height: u32,
@@ -75,6 +78,7 @@ fn create_pheromone_render_bind_group(
     pheromone_buffer: &wgpu::Buffer,
     grid_info_buffer: &wgpu::Buffer,
     config_buffer: &wgpu::Buffer,
+    color_scheme_buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("pheromone_render_bind_group"),
@@ -83,6 +87,7 @@ fn create_pheromone_render_bind_group(
             wgpu::BindGroupEntry { binding: 0, resource: pheromone_buffer.as_entire_binding() },
             wgpu::BindGroupEntry { binding: 1, resource: grid_info_buffer.as_entire_binding() },
             wgpu::BindGroupEntry { binding: 2, resource: config_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 3, resource: color_scheme_buffer.as_entire_binding() },
         ],
     })
 }
@@ -92,6 +97,7 @@ impl Pipeline {
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
         sim_config: SimConfig,
+        color_scheme: ColorScheme,
         scout_ratio: f32,
     ) -> anyhow::Result<Self> {
         let spawner = Spawner::new(crate::spawn::Colony::default(), crate::spawn::N_ANTS, scout_ratio);
@@ -121,6 +127,17 @@ impl Pipeline {
             contents: bytemuck::bytes_of(&sim_config),
             usage: wgpu::BufferUsages::UNIFORM,
         });
+        let color_scheme_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("color_scheme_buffer"),
+            contents: bytemuck::bytes_of(&color_scheme),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let background_color = wgpu::Color {
+            r: color_scheme.background[0] as f64,
+            g: color_scheme.background[1] as f64,
+            b: color_scheme.background[2] as f64,
+            a: color_scheme.background[3] as f64,
+        };
 
         let compute_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/compute.wgsl"));
@@ -221,6 +238,7 @@ impl Pipeline {
             layout: &render_pipeline.get_bind_group_layout(0),
             entries: &[
                 wgpu::BindGroupEntry { binding: 0, resource: ant_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry { binding: 1, resource: color_scheme_buffer.as_entire_binding() },
             ],
         });
 
@@ -261,6 +279,7 @@ impl Pipeline {
             &pheromone_buffer,
             &grid_info_buffer,
             &config_buffer,
+            &color_scheme_buffer,
         );
 
         Ok(Self {
@@ -278,10 +297,22 @@ impl Pipeline {
             grid_info_buffer,
             pheromone_buffer,
             config_buffer,
+            color_scheme_buffer,
+            background_color,
             spawner,
             grid_width,
             grid_height,
         })
+    }
+
+    pub fn set_color_scheme(&mut self, queue: &wgpu::Queue, scheme: ColorScheme) {
+        queue.write_buffer(&self.color_scheme_buffer, 0, bytemuck::bytes_of(&scheme));
+        self.background_color = wgpu::Color {
+            r: scheme.background[0] as f64,
+            g: scheme.background[1] as f64,
+            b: scheme.background[2] as f64,
+            a: scheme.background[3] as f64,
+        };
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, width: u32, height: u32) {
@@ -312,6 +343,7 @@ impl Pipeline {
             &self.pheromone_buffer,
             &self.grid_info_buffer,
             &self.config_buffer,
+            &self.color_scheme_buffer,
         );
     }
 

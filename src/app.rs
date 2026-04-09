@@ -8,6 +8,7 @@ use winit::{
 };
 
 use crate::{
+    color_scheme::{ColorScheme, Palette},
     pheromone::SimConfig,
     pipeline::Pipeline,
     wgpu_setup::WgpuSetup,
@@ -24,6 +25,7 @@ const FORAGER_RANDOMNESS: f32 = 0.05;
 const SCOUT_RANDOMNESS: f32 = 0.4;
 const SCOUT_RATIO: f32 = 0.1;
 
+
 #[derive(Debug)]
 pub struct State {
     window: Arc<Window>,
@@ -32,6 +34,7 @@ pub struct State {
     is_surface_configured: bool,
     frame_count: u32,
     fps_timer: std::time::Instant,
+    current_palette: Palette,
 }
 
 impl State {
@@ -49,7 +52,7 @@ impl State {
             scout_randomness: SCOUT_RANDOMNESS,
             _pad: [0; 3],
         };
-        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config, SCOUT_RATIO)?;
+        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config, ColorScheme::from_palette(Palette::BoldHues), SCOUT_RATIO)?;
 
         Ok(Self {
             window,
@@ -58,7 +61,14 @@ impl State {
             is_surface_configured: false,
             frame_count: 0,
             fps_timer: std::time::Instant::now(),
+            current_palette: Palette::BoldHues,
         })
+    }
+
+    fn cycle_palette(&mut self) {
+        self.current_palette = self.current_palette.next();
+        let scheme = ColorScheme::from_palette(self.current_palette);
+        self.pipeline.set_color_scheme(&self.wgpu_setup.queue, scheme);
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -127,7 +137,7 @@ impl State {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
+                        load: wgpu::LoadOp::Clear(self.pipeline.background_color),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -197,14 +207,17 @@ impl ApplicationHandler<State> for App {
                 }
             },
             WindowEvent::KeyboardInput {
-                event:
-                    KeyEvent {
-                        physical_key: PhysicalKey::Code(KeyCode::Escape),
-                        state: ElementState::Pressed,
-                        ..
-                    },
+                event: KeyEvent {
+                    physical_key: PhysicalKey::Code(key),
+                    state: ElementState::Pressed,
+                    ..
+                },
                 ..
-            } => event_loop.exit(),
+            } => match key {
+                KeyCode::Escape => event_loop.exit(),
+                KeyCode::KeyC => state.cycle_palette(),
+                _ => {}
+            },
             _ => {}
         }
     }

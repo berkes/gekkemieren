@@ -5,10 +5,15 @@ struct Ant {
     _pad: u32,
 }
 
-@group(0) @binding(0) var<storage, read> ants: array<Ant>;
+struct ColorScheme {
+    background: vec4<f32>,
+    forager:    vec4<f32>,
+    scout:      vec4<f32>,
+    pheromone:  vec4<f32>,
+}
 
-const FORAGER_COLOR: vec4<f32> = vec4<f32>(0.227, 0.047, 0.639, 1.0); // #3a0ca3
-const SCOUT_COLOR:   vec4<f32> = vec4<f32>(0.263, 0.380, 0.933, 1.0); // #4361ee
+@group(0) @binding(0) var<storage, read> ants: array<Ant>;
+@group(0) @binding(1) var<uniform> colors: ColorScheme;
 
 struct VertexOutput {
     @builtin(position)                    position: vec4<f32>,
@@ -24,5 +29,5 @@ fn vs_main(@builtin(instance_index) instance: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    return select(FORAGER_COLOR, SCOUT_COLOR, in.ant_type == 1u);
+    return select(colors.forager, colors.scout, in.ant_type == 1u);
 }
