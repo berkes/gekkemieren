@@ -19,12 +19,17 @@ fn random_collision_angle(pos: vec2<f32>) -> f32 {
     return COLLISION_ANGLE_MIN + hash(pos) * (COLLISION_ANGLE_MAX - COLLISION_ANGLE_MIN);
 }
 
-const COLONY_CENTER: vec2<f32> = vec2<f32>(0.2, 0.2);
-const COLONY_HALF_SIZE: f32 = 0.1;
+struct Colony {
+    center: vec2<f32>,
+    half_size: f32,
+    _pad: f32,
+}
+
+@group(0) @binding(1) var<uniform> colony: Colony;
 
 fn in_colony(pos: vec2<f32>) -> bool {
-    let d = abs(pos - COLONY_CENTER);
-    return d.x < COLONY_HALF_SIZE && d.y < COLONY_HALF_SIZE;
+    let d = abs(pos - colony.center);
+    return d.x < colony.half_size && d.y < colony.half_size;
 }
 
 fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {

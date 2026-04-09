@@ -1,9 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::ant::initial_ants;
-
-const ANT_COUNT: usize = 1000;
-const ANTS_PER_SECOND: f32 = 10.0;
+use crate::spawn::Spawner;
 
 #[derive(Debug)]
 pub struct Pipeline {
@@ -13,21 +10,23 @@ pub struct Pipeline {
     compute_bind_group: wgpu::BindGroup,
     render_pipeline: wgpu::RenderPipeline,
     render_bind_group: wgpu::BindGroup,
-    ant_count: u32,
-    active_count: u32,
-    last_tick: std::time::Instant,
-    spawn_accumulator: f32,
+    spawner: Spawner,
 }
 
 impl Pipeline {
     pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> anyhow::Result<Self> {
-        let ants = initial_ants(ANT_COUNT);
-        let ant_count = ants.len() as u32;
+        let spawner = Spawner::default();
+        let ants = spawner.initial_ants();
 
         let ant_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ant_buffer"),
             contents: bytemuck::cast_slice(&ants),
             usage: wgpu::BufferUsages::STORAGE,
+        });
+        let colony_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("colony_buffer"),
+            contents: bytemuck::bytes_of(&spawner.colony),
+            usage: wgpu::BufferUsages::UNIFORM,
         });
 
         let compute_shader =
@@ -44,10 +43,16 @@ impl Pipeline {
         let collision_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("collision_bind_group"),
             layout: &collision_pipeline.get_bind_group_layout(0),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: ant_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: ant_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: colony_buffer.as_entire_binding(),
+                },
+            ],
         });
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("compute_pipeline"),
@@ -131,23 +136,14 @@ impl Pipeline {
             compute_bind_group,
             render_pipeline,
             render_bind_group,
-            ant_count,
-            active_count: 1,
-            last_tick: std::time::Instant::now(),
-            spawn_accumulator: 0.0,
+            spawner,
         })
     }
 
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let now = std::time::Instant::now();
-        let delta = now.duration_since(self.last_tick).as_secs_f32();
-        self.last_tick = now;
-        self.spawn_accumulator += delta * ANTS_PER_SECOND;
-        let new_ants = self.spawn_accumulator.floor() as u32;
-        self.spawn_accumulator -= new_ants as f32;
-        self.active_count = (self.active_count + new_ants).min(self.ant_count);
+        let active_count = self.spawner.tick();
         let mut encoder = device.create_command_encoder(&Default::default());
-        let dispatches = self.active_count.div_ceil(64);
+        let dispatches = active_count.div_ceil(64);
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
             pass.set_pipeline(&self.collision_pipeline);
@@ -166,6 +162,6 @@ impl Pipeline {
     pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>) {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
-        render_pass.draw(0..6, 0..self.active_count);
+        render_pass.draw(0..6, 0..self.spawner.active_count());
     }
 }

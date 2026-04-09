@@ -1,6 +1,7 @@
 mod ant;
 mod app;
 mod pipeline;
+mod spawn;
 mod wgpu_setup;
 
 use app::run;

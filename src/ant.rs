@@ -33,49 +33,9 @@ impl Ant {
     }
 }
 
-pub fn initial_ants(count: usize) -> Vec<Ant> {
-    use rand::RngExt;
-    use std::f32::consts::TAU;
-
-    const COLONY_HALF_SIZE: f32 = 0.02;
-    const BASE_SPEED: f32 = 0.0002;
-    const SPEED_VARIATION: f32 = 0.0001;
-
-    let mut rng = rand::rng();
-    (0..count)
-        .map(|i| {
-            let angle = rng.random::<f32>() * TAU;
-            let speed = BASE_SPEED + rng.random_range(-SPEED_VARIATION..SPEED_VARIATION);
-            let ant_type = if i % 10 == 0 {
-                AntType::Scout
-            } else {
-                AntType::Forager
-            };
-            let x = 0.5 + rng.random_range(-COLONY_HALF_SIZE..COLONY_HALF_SIZE);
-            let y = 0.5 + rng.random_range(-COLONY_HALF_SIZE..COLONY_HALF_SIZE);
-            Ant::new([x, y], [angle.cos() * speed, angle.sin() * speed], ant_type)
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn initial_ants_returns_correct_count() {
-        let ants = initial_ants(100);
-        assert_eq!(ants.len(), 100);
-    }
-
-    #[test]
-    fn ant_positions_are_in_unit_range() {
-        let ants = initial_ants(100);
-        for ant in &ants {
-            assert!(ant.position[0] >= 0.0 && ant.position[0] <= 1.0);
-            assert!(ant.position[1] >= 0.0 && ant.position[1] <= 1.0);
-        }
-    }
 
     #[test]
     fn ant_type_encodes_correctly() {
