@@ -77,12 +77,4 @@ impl WgpuSetup {
             self.surface.configure(&self.device, &self.config);
         }
     }
-
-    pub(crate) fn width(&self) -> u32 {
-        self.config.width
-    }
-
-    pub(crate) fn height(&self) -> u32 {
-        self.config.height
-    }
 }

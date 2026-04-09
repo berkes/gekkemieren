@@ -7,51 +7,25 @@ use winit::{
     window::Window,
 };
 
-use crate::{
-    camera::{Camera, CameraController, CameraUniform},
-    pipeline::Pipeline,
-    wgpu_setup::WgpuSetup,
-};
+use crate::{pipeline::Pipeline, wgpu_setup::WgpuSetup};
 
 #[derive(Debug)]
 pub struct State {
     window: Arc<Window>,
     wgpu_setup: WgpuSetup,
     pipeline: Pipeline,
-    camera: Camera,
-    camera_uniform: CameraUniform,
-    camera_controller: CameraController,
-    mouse_position: winit::dpi::PhysicalPosition<f64>,
-    start_time: std::time::Instant,
     is_surface_configured: bool,
 }
 
 impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
-
-        let camera = Camera::new(wgpu_setup.width() as f32, wgpu_setup.height() as f32);
-        let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update(&camera);
-
-        let pipeline = Pipeline::new(
-            &wgpu_setup.device,
-            &wgpu_setup.queue,
-            &wgpu_setup.config,
-            camera_uniform,
-        )?;
-
-        let camera_controller = CameraController::new(0.2);
+        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config)?;
 
         Ok(Self {
             window,
             wgpu_setup,
             pipeline,
-            camera,
-            camera_uniform,
-            camera_controller,
-            start_time: std::time::Instant::now(),
-            mouse_position: winit::dpi::PhysicalPosition::default(),
             is_surface_configured: false,
         })
     }
@@ -59,12 +33,6 @@ impl State {
     fn resize(&mut self, width: u32, height: u32) {
         self.wgpu_setup.resize(width, height);
         self.is_surface_configured = true;
-    }
-
-    fn update(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update(&self.camera);
-        self.pipeline.update_camera(&self.wgpu_setup.queue, self.camera_uniform);
     }
 
     fn render(&mut self) -> anyhow::Result<()> {
@@ -102,6 +70,9 @@ impl State {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
+        self.pipeline
+            .update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+
         let mut encoder =
             self.wgpu_setup
                 .device
@@ -110,10 +81,6 @@ impl State {
                 });
 
         {
-            let red = self.mouse_position.x / self.window.inner_size().width as f64;
-            let green = self.mouse_position.y / self.window.inner_size().height as f64;
-            let blue = (self.start_time.elapsed().as_secs_f64() * 0.5).sin() * 0.5 + 0.5;
-
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -121,12 +88,7 @@ impl State {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: red as f64,
-                            g: green as f64,
-                            b: blue as f64,
-                            a: 1.0,
-                        }),
+                        load: wgpu::LoadOp::Clear(wgpu::Color::WHITE),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -144,22 +106,6 @@ impl State {
         output.present();
 
         Ok(())
-    }
-
-    fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
-        if code == KeyCode::Escape && is_pressed {
-            event_loop.exit();
-        } else {
-            self.camera_controller.handle_key(code, is_pressed);
-        }
-    }
-
-    fn handle_mouse_move(
-        &mut self,
-        _event_loop: &ActiveEventLoop,
-        position: winit::dpi::PhysicalPosition<f64>,
-    ) {
-        self.mouse_position = position;
     }
 }
 
@@ -204,29 +150,22 @@ impl ApplicationHandler<State> for App {
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
-            WindowEvent::RedrawRequested => {
-                state.update();
-                match state.render() {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::error!("{:?}", e);
-                        event_loop.exit();
-                    }
+            WindowEvent::RedrawRequested => match state.render() {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("{:?}", e);
+                    event_loop.exit();
                 }
-            }
+            },
             WindowEvent::KeyboardInput {
                 event:
                     KeyEvent {
-                        physical_key: PhysicalKey::Code(code),
-                        state: key_state,
+                        physical_key: PhysicalKey::Code(KeyCode::Escape),
+                        state: ElementState::Pressed,
                         ..
                     },
                 ..
-            } => state.handle_key(event_loop, code, key_state.is_pressed()),
-            WindowEvent::CursorMoved {
-                device_id: _,
-                position,
-            } => state.handle_mouse_move(event_loop, position),
+            } => event_loop.exit(),
             _ => {}
         }
     }
