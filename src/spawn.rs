@@ -1,7 +1,6 @@
 use crate::ant::{Ant, AntType};
 
 const BASE_SPEED: f32 = 0.0015;
-const SPEED_VARIATION: f32 = 0.001;
 pub const N_ANTS: usize = 10000;
 
 /// Colony settings shared between CPU logic and GPU shaders.
@@ -49,7 +48,7 @@ impl Spawner {
         (0..self.ant_count)
             .map(|_| {
                 let angle = rng.random::<f32>() * TAU;
-                let speed = BASE_SPEED + rng.random_range(-SPEED_VARIATION..SPEED_VARIATION);
+                let speed = BASE_SPEED;
                 let ant_type = if rng.random::<f32>() < self.scout_ratio {
                     AntType::Scout
                 } else {
