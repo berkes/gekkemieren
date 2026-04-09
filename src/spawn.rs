@@ -26,22 +26,11 @@ impl Default for Colony {
 pub struct Spawner {
     pub colony: Colony,
     pub ant_count: usize,
-    pub ants_per_second: f32,
-    active_count: u32,
-    last_tick: std::time::Instant,
-    spawn_accumulator: f32,
 }
 
 impl Spawner {
-    pub fn new(colony: Colony, ant_count: usize, ants_per_second: f32) -> Self {
-        Self {
-            colony,
-            ant_count,
-            ants_per_second,
-            active_count: 1,
-            last_tick: std::time::Instant::now(),
-            spawn_accumulator: 0.0,
-        }
+    pub fn new(colony: Colony, ant_count: usize) -> Self {
+        Self { colony, ant_count }
     }
 
     pub fn initial_ants(&self) -> Vec<Ant> {
@@ -66,26 +55,10 @@ impl Spawner {
             })
             .collect()
     }
-
-    pub fn active_count(&self) -> u32 {
-        self.active_count
-    }
-
-    /// Advance the spawn timer and return the updated active ant count.
-    pub fn tick(&mut self) -> u32 {
-        let now = std::time::Instant::now();
-        let delta = now.duration_since(self.last_tick).as_secs_f32();
-        self.last_tick = now;
-        self.spawn_accumulator += delta * self.ants_per_second;
-        let new_ants = self.spawn_accumulator.floor() as u32;
-        self.spawn_accumulator -= new_ants as f32;
-        self.active_count = (self.active_count + new_ants).min(self.ant_count as u32);
-        self.active_count
-    }
 }
 
 impl Default for Spawner {
     fn default() -> Self {
-        Self::new(Colony::default(), 1000, 10.0)
+        Self::new(Colony::default(), 1000)
     }
 }

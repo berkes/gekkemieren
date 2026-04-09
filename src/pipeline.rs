@@ -141,9 +141,9 @@ impl Pipeline {
     }
 
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let active_count = self.spawner.tick();
+        let ant_count = self.spawner.ant_count as u32;
         let mut encoder = device.create_command_encoder(&Default::default());
-        let dispatches = active_count.div_ceil(64);
+        let dispatches = ant_count.div_ceil(64);
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
             pass.set_pipeline(&self.collision_pipeline);
@@ -162,6 +162,6 @@ impl Pipeline {
     pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>) {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
-        render_pass.draw(0..6, 0..self.spawner.active_count());
+        render_pass.draw(0..6, 0..self.spawner.ant_count as u32);
     }
 }
