@@ -9,26 +9,18 @@ use winit::{
 
 use crate::{
     camera::{Camera, CameraController, CameraUniform},
-    shader::{INDICES, ShaderManager},
-    texture::Texture,
+    pipeline::Pipeline,
     wgpu_setup::WgpuSetup,
 };
 
 #[derive(Debug)]
 pub struct State {
     window: Arc<Window>,
+    wgpu_setup: WgpuSetup,
+    pipeline: Pipeline,
     camera: Camera,
     camera_uniform: CameraUniform,
-    camera_buffer: wgpu::Buffer,
     camera_controller: CameraController,
-    camera_bind_group: wgpu::BindGroup,
-    wgpu_setup: WgpuSetup,
-    render_pipeline: wgpu::RenderPipeline,
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    num_indices: u32,
-    diffuse_bind_group: wgpu::BindGroup,
-    diffuse_texture: Texture,
     mouse_position: winit::dpi::PhysicalPosition<f64>,
     start_time: std::time::Instant,
     is_surface_configured: bool,
@@ -37,75 +29,27 @@ pub struct State {
 impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
-        let shader_manager = ShaderManager::new(wgpu_setup.device.clone());
-        let (vertex_buffer, index_buffer) = shader_manager.create_buffers();
-        let num_indices = INDICES.len() as u32;
-
-        let diffuse_bytes = include_bytes!("tree.jpg");
-        let diffuse_texture = Texture::from_bytes(
-            &wgpu_setup.device,
-            &wgpu_setup.queue,
-            diffuse_bytes,
-            "tree.jpg",
-        )?;
-        let diffuse_bind_group_layout = shader_manager.create_bind_group_layout();
-        let diffuse_bind_group = shader_manager.create_bind_group(&diffuse_bind_group_layout, &diffuse_texture);
 
         let camera = Camera::new(wgpu_setup.width() as f32, wgpu_setup.height() as f32);
         let mut camera_uniform = CameraUniform::new();
         camera_uniform.update(&camera);
-        let camera_buffer = shader_manager.create_buffer_init(camera_uniform);
-        let camera_bind_group_layout =
-            wgpu_setup
-                .device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("camera_bind_group_layout"),
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                });
-        let camera_bind_group = wgpu_setup
-            .device
-            .create_bind_group(&wgpu::BindGroupDescriptor {
-                label: Some("camera_bind_group"),
-                layout: &camera_bind_group_layout,
-                entries: &[wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }],
-            });
-        let render_pipeline = shader_manager.create_render_pipeline(
+
+        let pipeline = Pipeline::new(
+            &wgpu_setup.device,
+            &wgpu_setup.queue,
             &wgpu_setup.config,
-            &[
-                Some(&diffuse_bind_group_layout),
-                Some(&camera_bind_group_layout),
-            ],
-        );
+            camera_uniform,
+        )?;
 
         let camera_controller = CameraController::new(0.2);
 
         Ok(Self {
             window,
+            wgpu_setup,
+            pipeline,
             camera,
             camera_uniform,
-            camera_buffer,
-            camera_bind_group,
             camera_controller,
-            wgpu_setup,
-            render_pipeline,
-            index_buffer,
-            vertex_buffer,
-            num_indices,
-            diffuse_bind_group,
-            diffuse_texture,
-
             start_time: std::time::Instant::now(),
             mouse_position: winit::dpi::PhysicalPosition::default(),
             is_surface_configured: false,
@@ -120,7 +64,7 @@ impl State {
     fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update(&self.camera);
-        self.wgpu_setup.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+        self.pipeline.update_camera(&self.wgpu_setup.queue, self.camera_uniform);
     }
 
     fn render(&mut self) -> anyhow::Result<()> {
@@ -191,12 +135,7 @@ impl State {
                 timestamp_writes: None,
                 multiview_mask: None,
             });
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-            render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            self.pipeline.draw(&mut render_pass);
         }
 
         self.wgpu_setup

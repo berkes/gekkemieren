@@ -1,5 +1,6 @@
 mod app;
 mod camera;
+mod pipeline;
 mod shader;
 mod texture;
 mod wgpu_setup;
