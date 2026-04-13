@@ -22,13 +22,14 @@ find and retrieve food and avoid obstructions.
 - **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup. Uses shaders under `src/shaders`.
 - **Ant -or agent-** (`src/ant.rs`): Agent behaviour
 
-
 ## Development Notes
 
 ### Iterate
 
 Develop in small iterations. Each iteration:
 
+* add or change tests
+* run tests, expect them to fail
 * change code
 * run tests
 * run lint and format to determine warnings and errors

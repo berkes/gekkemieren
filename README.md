@@ -43,7 +43,7 @@ This starts the generative art simulation locally.
 
 ### Test
 
-To run tests (if available), use
+To run tests, use
 
     cargo test
 
