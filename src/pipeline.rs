@@ -1,5 +1,6 @@
 use wgpu::util::DeviceExt;
 
+use crate::app;
 use crate::color_scheme::ColorScheme;
 use crate::pheromone::{GridInfo, SimConfig};
 use crate::spawn::Spawner;
@@ -100,7 +101,7 @@ impl Pipeline {
         color_scheme: ColorScheme,
         scout_ratio: f32,
     ) -> anyhow::Result<Self> {
-        let spawner = Spawner::new(crate::spawn::Colony::default(), crate::spawn::N_ANTS, scout_ratio);
+        let spawner = Spawner::new(crate::spawn::Colony::default(), app::N_ANTS, scout_ratio);
         let ants = spawner.initial_ants();
         let grid_width = config.width;
         let grid_height = config.height;

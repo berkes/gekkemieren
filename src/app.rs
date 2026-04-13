@@ -14,6 +14,8 @@ use crate::{
     wgpu_setup::WgpuSetup,
 };
 
+pub const BASE_SPEED: f32 = 0.0015;
+pub const N_ANTS: usize = 15000;
 const DECAY_AMOUNT: u32 = 1;
 const MAX_STRENGTH: u32 = 1000;
 const DEPOSIT_AMOUNT: u32 = 50;
@@ -24,7 +26,6 @@ const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
 const FORAGER_RANDOMNESS: f32 = 0.05;
 const SCOUT_RANDOMNESS: f32 = 0.4;
 const SCOUT_RATIO: f32 = 0.1;
-
 
 #[derive(Debug)]
 pub struct State {
