@@ -101,3 +101,58 @@ impl AntSpawner for FixedSpawner {
         &self.colony
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn spawner() -> RandomSpawner {
+        RandomSpawner::new(Colony::new([0.5, 0.5], 0.1), 1000, 0.2, 0.002)
+    }
+
+    #[test]
+    fn ant_count_matches_requested() {
+        let s = spawner();
+        assert_eq!(s.ant_count(), 1000);
+        assert_eq!(s.ants().len(), 1000);
+    }
+
+    #[test]
+    fn all_ants_within_colony_bounds() {
+        let s = spawner();
+        let [cx, cy] = s.colony.center;
+        let hs = s.colony.half_size;
+        for ant in s.ants() {
+            let [x, y] = ant.position;
+            assert!(
+                (x - cx).abs() < hs && (y - cy).abs() < hs,
+                "ant at [{x}, {y}] is outside colony bounds"
+            );
+        }
+    }
+
+    #[test]
+    fn scout_ratio_is_approximately_correct() {
+        let s = spawner();
+        let scout_count = s.ants().iter().filter(|a| a.ant_type == 1).count();
+        let actual_ratio = scout_count as f32 / s.ant_count() as f32;
+        // Allow ±5% deviation from the requested 20% ratio.
+        assert!(
+            (actual_ratio - 0.2).abs() < 0.05,
+            "scout ratio {actual_ratio:.3} is too far from 0.2"
+        );
+    }
+
+    #[test]
+    fn all_ants_have_correct_speed() {
+        let s = spawner();
+        for ant in s.ants() {
+            let [dx, dy] = ant.direction;
+            let speed = (dx * dx + dy * dy).sqrt();
+            assert!(
+                (speed - 0.002).abs() < 1e-6,
+                "ant speed {speed} differs from requested 0.002"
+            );
+        }
+    }
+}
