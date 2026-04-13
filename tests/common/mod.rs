@@ -19,7 +19,9 @@ impl HeadlessGpuSetup {
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: None,
-                force_fallback_adapter: false,
+                // Force the software renderer (lavapipe on Linux) so that
+                // floating-point results are identical across all machines.
+                force_fallback_adapter: true,
             })
             .await?;
 
