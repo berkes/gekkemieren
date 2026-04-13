@@ -22,9 +22,9 @@ struct SimConfig {
     collision_angle_max: f32,
     forager_randomness: f32,
     scout_randomness: f32,
+    sensor_distance: f32,
+    sensor_angle: f32,
     _pad1: u32,
-    _pad2: u32,
-    _pad3: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
@@ -51,6 +51,13 @@ struct Colony {
 fn in_colony(pos: vec2<f32>) -> bool {
     let d = abs(pos - colony.center);
     return d.x < colony.half_size && d.y < colony.half_size;
+}
+
+fn sample_pheromone(pos: vec2<f32>) -> f32 {
+    let clamped = clamp(pos, vec2<f32>(0.0), vec2<f32>(1.0));
+    let x = u32(clamped.x * f32(grid_info.width - 1u));
+    let y = u32(clamped.y * f32(grid_info.height - 1u));
+    return f32(atomicLoad(&pheromone_grid[y * grid_info.width + x]));
 }
 
 fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {
@@ -98,6 +105,17 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
+
+    let dir_norm = normalize(ant.direction);
+    let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
+    let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
+    let left_sample = sample_pheromone(left_pos);
+    let right_sample = sample_pheromone(right_pos);
+    if left_sample > right_sample {
+        ant.direction = rotate(ant.direction, config.sensor_angle);
+    } else if right_sample > left_sample {
+        ant.direction = rotate(ant.direction, -config.sensor_angle);
+    }
 
     let randomness = select(config.forager_randomness, config.scout_randomness, ant.ant_type == 1u);
     let noise = hash(ant.position + vec2<f32>(f32(index) * 0.1, 0.0)) * 2.0 - 1.0;

@@ -27,6 +27,8 @@ const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
 const FORAGER_RANDOMNESS: f32 = 0.05;
 const SCOUT_RANDOMNESS: f32 = 0.4;
 const SCOUT_RATIO: f32 = 0.1;
+const SENSOR_DISTANCE: f32 = 0.03;
+const SENSOR_ANGLE: f32 = 0.524; // ~30 degrees
 
 #[derive(Debug)]
 pub struct State {
@@ -54,7 +56,9 @@ impl State {
             collision_angle_max: COLLISION_ANGLE_MAX,
             forager_randomness: FORAGER_RANDOMNESS,
             scout_randomness: SCOUT_RANDOMNESS,
-            _pad: [0; 3],
+            sensor_distance: SENSOR_DISTANCE,
+            sensor_angle: SENSOR_ANGLE,
+            _pad: [0; 1],
         };
 
         let spawner = RandomSpawner::new(Colony::default(), N_ANTS, SCOUT_RATIO, BASE_SPEED);

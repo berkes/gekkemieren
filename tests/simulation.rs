@@ -22,7 +22,9 @@ fn sim_config() -> SimConfig {
         // only changed by collision, never by the hash-based noise.
         forager_randomness: 0.0,
         scout_randomness: 0.0,
-        _pad: [0; 3],
+        _pad: [0; 1],
+        sensor_distance: 0.03,
+        sensor_angle: 0.5,
     }
 }
 

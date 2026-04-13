@@ -27,7 +27,8 @@ impl ColorScheme {
         match palette {
             Palette::BoldHues => Self {
                 // https://coolors.co/palette/f72585-7209b7-3a0ca3-4361ee-4cc9f0
-                background: [1.000, 1.000, 1.000, 1.0],
+                // background: [1.000, 1.000, 1.000, 1.0],
+                background: [0.0, 0.0, 0.0, 1.0],
                 forager: [0.227, 0.047, 0.639, 1.0],   // #3a0ca3
                 scout: [0.263, 0.380, 0.933, 1.0],     // #4361ee
                 pheromone: [0.447, 0.035, 0.718, 1.0], // #7209b7

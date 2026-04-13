@@ -8,9 +8,9 @@ struct SimConfig {
     collision_angle_max: f32,
     forager_randomness: f32,
     scout_randomness: f32,
+    sensor_distance: f32,
+    sensor_angle: f32,
     _pad1: u32,
-    _pad2: u32,
-    _pad3: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> pheromone_grid: array<atomic<u32>>;
