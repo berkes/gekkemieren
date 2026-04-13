@@ -13,7 +13,7 @@ impl AntType {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Ant {
     pub position: [f32; 2],
     pub direction: [f32; 2],

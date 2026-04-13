@@ -10,7 +10,8 @@ use winit::{
 use crate::{
     color_scheme::{ColorScheme, Palette},
     pheromone::SimConfig,
-    pipeline::Pipeline,
+    pipeline::{RenderPipeline, SimulationPipeline},
+    spawn::{AntSpawner, Colony, RandomSpawner},
     wgpu_setup::WgpuSetup,
 };
 
@@ -31,7 +32,8 @@ const SCOUT_RATIO: f32 = 0.1;
 pub struct State {
     window: Arc<Window>,
     wgpu_setup: WgpuSetup,
-    pipeline: Pipeline,
+    simulation: SimulationPipeline,
+    pipeline: RenderPipeline,
     is_surface_configured: bool,
     frame_count: u32,
     fps_timer: std::time::Instant,
@@ -41,6 +43,7 @@ pub struct State {
 impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
+
         let sim_config = SimConfig {
             decay_amount: DECAY_AMOUNT,
             max_strength: MAX_STRENGTH,
@@ -53,17 +56,30 @@ impl State {
             scout_randomness: SCOUT_RANDOMNESS,
             _pad: [0; 3],
         };
-        let pipeline = Pipeline::new(
+
+        let spawner = RandomSpawner::new(Colony::default(), N_ANTS, SCOUT_RATIO, BASE_SPEED);
+
+        let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
-            &wgpu_setup.config,
+            wgpu_setup.config.width,
+            wgpu_setup.config.height,
             sim_config,
-            ColorScheme::from_palette(Palette::BoldHues),
-            SCOUT_RATIO,
+            spawner.colony(),
+            spawner.ants(),
+        );
+
+        let color_scheme = ColorScheme::from_palette(Palette::BoldHues);
+        let pipeline = RenderPipeline::new(
+            &wgpu_setup.device,
+            wgpu_setup.config.format,
+            &simulation,
+            color_scheme,
         )?;
 
         Ok(Self {
             window,
             wgpu_setup,
+            simulation,
             pipeline,
             is_surface_configured: false,
             frame_count: 0,
@@ -81,12 +97,14 @@ impl State {
 
     fn resize(&mut self, width: u32, height: u32) {
         self.wgpu_setup.resize(width, height);
-        self.pipeline.resize(
+        self.simulation.resize(
             &self.wgpu_setup.device,
             &self.wgpu_setup.queue,
             width,
             height,
         );
+        self.pipeline
+            .on_resize(&self.wgpu_setup.device, &self.simulation);
         self.is_surface_configured = true;
     }
 
@@ -131,7 +149,7 @@ impl State {
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
 
-        self.pipeline
+        self.simulation
             .update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
 
         let mut encoder =
@@ -158,7 +176,8 @@ impl State {
                 timestamp_writes: None,
                 multiview_mask: None,
             });
-            self.pipeline.draw(&mut render_pass);
+            self.pipeline
+                .draw(&mut render_pass, self.simulation.ant_count as u32);
         }
 
         self.wgpu_setup

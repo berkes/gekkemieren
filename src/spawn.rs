@@ -1,7 +1,12 @@
-use crate::{
-    ant::{Ant, AntType},
-    app::{self, N_ANTS},
-};
+use crate::ant::{Ant, AntType};
+
+pub trait AntSpawner {
+    fn ants(&self) -> &[Ant];
+    fn colony(&self) -> &Colony;
+    fn ant_count(&self) -> usize {
+        self.ants().len()
+    }
+}
 
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.
@@ -29,35 +34,27 @@ impl Default for Colony {
     }
 }
 
+/// Spawns ants at random positions within the colony bounds.
+/// Ants are generated once at construction and held for GPU upload.
 #[derive(Debug)]
-pub struct Spawner {
+pub struct RandomSpawner {
     pub colony: Colony,
-    pub ant_count: usize,
-    pub scout_ratio: f32,
+    ants: Vec<Ant>,
 }
 
-impl Spawner {
-    pub fn new(colony: Colony, ant_count: usize, scout_ratio: f32) -> Self {
-        Self {
-            colony,
-            ant_count,
-            scout_ratio,
-        }
-    }
-
-    pub fn initial_ants(&self) -> Vec<Ant> {
+impl RandomSpawner {
+    pub fn new(colony: Colony, ant_count: usize, scout_ratio: f32, speed: f32) -> Self {
         use rand::RngExt;
         use std::f32::consts::TAU;
 
         let mut rng = rand::rng();
-        let [cx, cy] = self.colony.center;
-        let hs = self.colony.half_size;
+        let [cx, cy] = colony.center;
+        let hs = colony.half_size;
 
-        (0..self.ant_count)
+        let ants = (0..ant_count)
             .map(|_| {
                 let angle = rng.random::<f32>() * TAU;
-                let speed = app::BASE_SPEED;
-                let ant_type = if rng.random::<f32>() < self.scout_ratio {
+                let ant_type = if rng.random::<f32>() < scout_ratio {
                     AntType::Scout
                 } else {
                     AntType::Forager
@@ -66,12 +63,41 @@ impl Spawner {
                 let y = cy + rng.random_range(-hs..hs);
                 Ant::new([x, y], [angle.cos() * speed, angle.sin() * speed], ant_type)
             })
-            .collect()
+            .collect();
+
+        Self { colony, ants }
     }
 }
 
-impl Default for Spawner {
-    fn default() -> Self {
-        Self::new(Colony::default(), N_ANTS, 0.1)
+impl AntSpawner for RandomSpawner {
+    fn ants(&self) -> &[Ant] {
+        &self.ants
+    }
+
+    fn colony(&self) -> &Colony {
+        &self.colony
+    }
+}
+
+/// Spawns a fixed, caller-provided list of ants. Used for deterministic tests.
+#[derive(Debug)]
+pub struct FixedSpawner {
+    pub ants: Vec<Ant>,
+    pub colony: Colony,
+}
+
+impl FixedSpawner {
+    pub fn new(ants: Vec<Ant>, colony: Colony) -> Self {
+        Self { ants, colony }
+    }
+}
+
+impl AntSpawner for FixedSpawner {
+    fn ants(&self) -> &[Ant] {
+        &self.ants
+    }
+
+    fn colony(&self) -> &Colony {
+        &self.colony
     }
 }

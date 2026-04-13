@@ -1,13 +1,3 @@
-mod ant;
-mod app;
-mod color_scheme;
-mod pheromone;
-mod pipeline;
-mod spawn;
-mod wgpu_setup;
-
-use app::run;
-
 fn main() {
-    run().unwrap();
+    gekkemieren::app::run().unwrap();
 }

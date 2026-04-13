@@ -1,39 +1,18 @@
 use wgpu::util::DeviceExt;
 
-use crate::app;
+use crate::ant::Ant;
 use crate::color_scheme::ColorScheme;
 use crate::pheromone::{GridInfo, SimConfig};
-use crate::spawn::Spawner;
+use crate::spawn::Colony;
 
-#[derive(Debug)]
-pub struct Pipeline {
-    collision_pipeline: wgpu::ComputePipeline,
-    collision_bind_group: wgpu::BindGroup,
-    compute_pipeline: wgpu::ComputePipeline,
-    compute_bind_group: wgpu::BindGroup,
-    pheromone_decay_pipeline: wgpu::ComputePipeline,
-    pheromone_decay_bind_group: wgpu::BindGroup,
-    render_pipeline: wgpu::RenderPipeline,
-    render_bind_group: wgpu::BindGroup,
-    pheromone_render_pipeline: wgpu::RenderPipeline,
-    pheromone_render_bind_group: wgpu::BindGroup,
-    ant_buffer: wgpu::Buffer,
-    grid_info_buffer: wgpu::Buffer,
-    pheromone_buffer: wgpu::Buffer,
-    config_buffer: wgpu::Buffer,
-    color_scheme_buffer: wgpu::Buffer,
-    pub background_color: wgpu::Color,
-    spawner: Spawner,
-    grid_width: u32,
-    grid_height: u32,
-}
+// ── helpers shared by both pipeline types ────────────────────────────────────
 
 fn create_pheromone_buffer(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Buffer {
     let data = vec![0u32; (width * height) as usize];
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("pheromone_buffer"),
         contents: bytemuck::cast_slice(&data),
-        usage: wgpu::BufferUsages::STORAGE,
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
     })
 }
 
@@ -123,32 +102,53 @@ fn create_pheromone_render_bind_group(
     })
 }
 
-impl Pipeline {
+// ── SimulationPipeline ────────────────────────────────────────────────────────
+
+/// Compute pipelines and simulation state buffers.
+/// No dependency on windowing or surface format — safe for headless use.
+#[derive(Debug)]
+pub struct SimulationPipeline {
+    collision_pipeline: wgpu::ComputePipeline,
+    collision_bind_group: wgpu::BindGroup,
+    compute_pipeline: wgpu::ComputePipeline,
+    compute_bind_group: wgpu::BindGroup,
+    pheromone_decay_pipeline: wgpu::ComputePipeline,
+    pheromone_decay_bind_group: wgpu::BindGroup,
+
+    pub ant_buffer: wgpu::Buffer,
+    pub pheromone_buffer: wgpu::Buffer,
+    pub grid_info_buffer: wgpu::Buffer,
+    pub config_buffer: wgpu::Buffer,
+
+    pub ant_count: usize,
+    pub grid_width: u32,
+    pub grid_height: u32,
+}
+
+impl SimulationPipeline {
     pub fn new(
         device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
+        width: u32,
+        height: u32,
         sim_config: SimConfig,
-        color_scheme: ColorScheme,
-        scout_ratio: f32,
-    ) -> anyhow::Result<Self> {
-        let spawner = Spawner::new(crate::spawn::Colony::default(), app::N_ANTS, scout_ratio);
-        let ants = spawner.initial_ants();
-        let grid_width = config.width;
-        let grid_height = config.height;
+        colony: &Colony,
+        ants: &[Ant],
+    ) -> Self {
+        let ant_count = ants.len();
 
         let ant_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ant_buffer"),
-            contents: bytemuck::cast_slice(&ants),
-            usage: wgpu::BufferUsages::STORAGE,
+            contents: bytemuck::cast_slice(ants),
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
         });
         let colony_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("colony_buffer"),
-            contents: bytemuck::bytes_of(&spawner.colony),
+            contents: bytemuck::bytes_of(colony),
             usage: wgpu::BufferUsages::UNIFORM,
         });
         let grid_info = GridInfo {
-            width: grid_width,
-            height: grid_height,
+            width,
+            height,
             _pad: [0; 2],
         };
         let grid_info_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -156,26 +156,16 @@ impl Pipeline {
             contents: bytemuck::bytes_of(&grid_info),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        let pheromone_buffer = create_pheromone_buffer(device, grid_width, grid_height);
+        let pheromone_buffer = create_pheromone_buffer(device, width, height);
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
             contents: bytemuck::bytes_of(&sim_config),
             usage: wgpu::BufferUsages::UNIFORM,
         });
-        let color_scheme_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("color_scheme_buffer"),
-            contents: bytemuck::bytes_of(&color_scheme),
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-        });
-        let background_color = wgpu::Color {
-            r: color_scheme.background[0] as f64,
-            g: color_scheme.background[1] as f64,
-            b: color_scheme.background[2] as f64,
-            a: color_scheme.background[3] as f64,
-        };
 
         let compute_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/compute.wgsl"));
+
         let collision_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("collision_pipeline"),
             layout: None,
@@ -202,6 +192,7 @@ impl Pipeline {
                 },
             ],
         });
+
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("compute_pipeline"),
             layout: None,
@@ -237,124 +228,52 @@ impl Pipeline {
             &config_buffer,
         );
 
-        let render_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/render.wgsl"));
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("render_pipeline"),
-            layout: None,
-            vertex: wgpu::VertexState {
-                module: &render_shader,
-                entry_point: Some("vs_main"),
-                buffers: &[],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &render_shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: config.format,
-                    blend: Some(wgpu::BlendState::REPLACE),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::PointList,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-
-        let render_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("render_bind_group"),
-            layout: &render_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ant_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: color_scheme_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
-        let pheromone_render_shader =
-            device.create_shader_module(wgpu::include_wgsl!("shaders/pheromone_render.wgsl"));
-        let pheromone_render_pipeline =
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("pheromone_render_pipeline"),
-                layout: None,
-                vertex: wgpu::VertexState {
-                    module: &pheromone_render_shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[],
-                    compilation_options: Default::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &pheromone_render_shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: config.format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: Default::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            });
-        let pheromone_render_bind_group = create_pheromone_render_bind_group(
-            device,
-            &pheromone_render_pipeline,
-            &pheromone_buffer,
-            &grid_info_buffer,
-            &config_buffer,
-            &color_scheme_buffer,
-        );
-
-        Ok(Self {
+        Self {
             collision_pipeline,
             collision_bind_group,
             compute_pipeline,
             compute_bind_group,
             pheromone_decay_pipeline,
             pheromone_decay_bind_group,
-            render_pipeline,
-            render_bind_group,
-            pheromone_render_pipeline,
-            pheromone_render_bind_group,
             ant_buffer,
-            grid_info_buffer,
             pheromone_buffer,
+            grid_info_buffer,
             config_buffer,
-            color_scheme_buffer,
-            background_color,
-            spawner,
-            grid_width,
-            grid_height,
-        })
+            ant_count,
+            grid_width: width,
+            grid_height: height,
+        }
     }
 
-    pub fn set_color_scheme(&mut self, queue: &wgpu::Queue, scheme: ColorScheme) {
-        queue.write_buffer(&self.color_scheme_buffer, 0, bytemuck::bytes_of(&scheme));
-        self.background_color = wgpu::Color {
-            r: scheme.background[0] as f64,
-            g: scheme.background[1] as f64,
-            b: scheme.background[2] as f64,
-            a: scheme.background[3] as f64,
-        };
+    /// Dispatches one simulation tick: pheromone decay → collision → movement.
+    pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let ant_count = self.ant_count as u32;
+        let pheromone_count = self.grid_width * self.grid_height;
+        let mut encoder = device.create_command_encoder(&Default::default());
+
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.pheromone_decay_pipeline);
+            pass.set_bind_group(0, &self.pheromone_decay_bind_group, &[]);
+            pass.dispatch_workgroups(pheromone_count.div_ceil(64), 1, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.collision_pipeline);
+            pass.set_bind_group(0, &self.collision_bind_group, &[]);
+            pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.compute_pipeline);
+            pass.set_bind_group(0, &self.compute_bind_group, &[]);
+            pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
+        }
+
+        queue.submit([encoder.finish()]);
     }
 
+    /// Resizes the pheromone grid and rebuilds the affected bind groups.
     pub fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, width: u32, height: u32) {
         self.grid_width = width;
         self.grid_height = height;
@@ -381,50 +300,226 @@ impl Pipeline {
             &self.pheromone_buffer,
             &self.config_buffer,
         );
+    }
+
+    /// Copies the ant buffer back to CPU. Used in tests to inspect simulation state.
+    pub fn read_ant_state(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<Ant> {
+        let size = (self.ant_count * std::mem::size_of::<Ant>()) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("ant_staging"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(&self.ant_buffer, 0, &staging, 0, size);
+        queue.submit([encoder.finish()]);
+
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+
+        let data = slice.get_mapped_range();
+        let result: Vec<Ant> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging.unmap();
+        result
+    }
+
+    /// Copies the pheromone buffer back to CPU. Used in tests to inspect pheromone state.
+    pub fn read_pheromone_state(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u32> {
+        let size = (self.grid_width * self.grid_height * std::mem::size_of::<u32>() as u32) as u64;
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("pheromone_staging"),
+            size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(&self.pheromone_buffer, 0, &staging, 0, size);
+        queue.submit([encoder.finish()]);
+
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+
+        let data = slice.get_mapped_range();
+        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging.unmap();
+        result
+    }
+}
+
+// ── RenderPipeline ────────────────────────────────────────────────────────────
+
+/// Render pipelines for displaying ants and pheromones on screen.
+/// Reads from buffers owned by `SimulationPipeline`.
+#[derive(Debug)]
+pub struct RenderPipeline {
+    render_pipeline: wgpu::RenderPipeline,
+    render_bind_group: wgpu::BindGroup,
+    pheromone_render_pipeline: wgpu::RenderPipeline,
+    pheromone_render_bind_group: wgpu::BindGroup,
+    color_scheme_buffer: wgpu::Buffer,
+    pub background_color: wgpu::Color,
+}
+
+impl RenderPipeline {
+    pub fn new(
+        device: &wgpu::Device,
+        texture_format: wgpu::TextureFormat,
+        simulation: &SimulationPipeline,
+        color_scheme: ColorScheme,
+    ) -> anyhow::Result<Self> {
+        let color_scheme_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("color_scheme_buffer"),
+            contents: bytemuck::bytes_of(&color_scheme),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let background_color = wgpu::Color {
+            r: color_scheme.background[0] as f64,
+            g: color_scheme.background[1] as f64,
+            b: color_scheme.background[2] as f64,
+            a: color_scheme.background[3] as f64,
+        };
+
+        let render_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/render.wgsl"));
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("render_pipeline"),
+            layout: None,
+            vertex: wgpu::VertexState {
+                module: &render_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &render_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: texture_format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::PointList,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+        let render_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("render_bind_group"),
+            layout: &render_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: simulation.ant_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: color_scheme_buffer.as_entire_binding(),
+                },
+            ],
+        });
+
+        let pheromone_render_shader =
+            device.create_shader_module(wgpu::include_wgsl!("shaders/pheromone_render.wgsl"));
+        let pheromone_render_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("pheromone_render_pipeline"),
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: &pheromone_render_shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &pheromone_render_shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: texture_format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        let pheromone_render_bind_group = create_pheromone_render_bind_group(
+            device,
+            &pheromone_render_pipeline,
+            &simulation.pheromone_buffer,
+            &simulation.grid_info_buffer,
+            &simulation.config_buffer,
+            &color_scheme_buffer,
+        );
+
+        Ok(Self {
+            render_pipeline,
+            render_bind_group,
+            pheromone_render_pipeline,
+            pheromone_render_bind_group,
+            color_scheme_buffer,
+            background_color,
+        })
+    }
+
+    pub fn set_color_scheme(&mut self, queue: &wgpu::Queue, scheme: ColorScheme) {
+        queue.write_buffer(&self.color_scheme_buffer, 0, bytemuck::bytes_of(&scheme));
+        self.background_color = wgpu::Color {
+            r: scheme.background[0] as f64,
+            g: scheme.background[1] as f64,
+            b: scheme.background[2] as f64,
+            a: scheme.background[3] as f64,
+        };
+    }
+
+    /// Rebuilds the pheromone render bind group after a simulation resize.
+    /// Must be called whenever `SimulationPipeline::resize` has been called.
+    pub fn on_resize(&mut self, device: &wgpu::Device, simulation: &SimulationPipeline) {
         self.pheromone_render_bind_group = create_pheromone_render_bind_group(
             device,
             &self.pheromone_render_pipeline,
-            &self.pheromone_buffer,
-            &self.grid_info_buffer,
-            &self.config_buffer,
+            &simulation.pheromone_buffer,
+            &simulation.grid_info_buffer,
+            &simulation.config_buffer,
             &self.color_scheme_buffer,
         );
     }
 
-    pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let ant_count = self.spawner.ant_count as u32;
-        let pheromone_count = self.grid_width * self.grid_height;
-        let mut encoder = device.create_command_encoder(&Default::default());
-
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pheromone_decay_pipeline);
-            pass.set_bind_group(0, &self.pheromone_decay_bind_group, &[]);
-            pass.dispatch_workgroups(pheromone_count.div_ceil(64), 1, 1);
-        }
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.collision_pipeline);
-            pass.set_bind_group(0, &self.collision_bind_group, &[]);
-            pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
-        }
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.compute_pipeline);
-            pass.set_bind_group(0, &self.compute_bind_group, &[]);
-            pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
-        }
-
-        queue.submit([encoder.finish()]);
-    }
-
-    pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>) {
+    pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>, ant_count: u32) {
         render_pass.set_pipeline(&self.pheromone_render_pipeline);
         render_pass.set_bind_group(0, &self.pheromone_render_bind_group, &[]);
         render_pass.draw(0..6, 0..1);
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
-        render_pass.draw(0..1, 0..self.spawner.ant_count as u32);
+        render_pass.draw(0..1, 0..ant_count);
     }
 }
