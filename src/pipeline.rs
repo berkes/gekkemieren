@@ -49,10 +49,22 @@ fn create_compute_bind_group(
         label: Some("compute_bind_group"),
         layout: &pipeline.get_bind_group_layout(0),
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: ant_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 2, resource: pheromone_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 3, resource: grid_info_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 4, resource: config_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: ant_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: pheromone_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: grid_info_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 4,
+                resource: config_buffer.as_entire_binding(),
+            },
         ],
     })
 }
@@ -67,8 +79,14 @@ fn create_pheromone_decay_bind_group(
         label: Some("pheromone_decay_bind_group"),
         layout: &pipeline.get_bind_group_layout(0),
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: pheromone_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: config_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: pheromone_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: config_buffer.as_entire_binding(),
+            },
         ],
     })
 }
@@ -85,10 +103,22 @@ fn create_pheromone_render_bind_group(
         label: Some("pheromone_render_bind_group"),
         layout: &pipeline.get_bind_group_layout(0),
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: pheromone_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: grid_info_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 2, resource: config_buffer.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 3, resource: color_scheme_buffer.as_entire_binding() },
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: pheromone_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: grid_info_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: config_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: color_scheme_buffer.as_entire_binding(),
+            },
         ],
     })
 }
@@ -116,7 +146,11 @@ impl Pipeline {
             contents: bytemuck::bytes_of(&spawner.colony),
             usage: wgpu::BufferUsages::UNIFORM,
         });
-        let grid_info = GridInfo { width: grid_width, height: grid_height, _pad: [0; 2] };
+        let grid_info = GridInfo {
+            width: grid_width,
+            height: grid_height,
+            _pad: [0; 2],
+        };
         let grid_info_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("grid_info_buffer"),
             contents: bytemuck::bytes_of(&grid_info),
@@ -142,15 +176,14 @@ impl Pipeline {
 
         let compute_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/compute.wgsl"));
-        let collision_pipeline =
-            device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-                label: Some("collision_pipeline"),
-                layout: None,
-                module: &compute_shader,
-                entry_point: Some("collision_main"),
-                compilation_options: Default::default(),
-                cache: Default::default(),
-            });
+        let collision_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+            label: Some("collision_pipeline"),
+            layout: None,
+            module: &compute_shader,
+            entry_point: Some("collision_main"),
+            compilation_options: Default::default(),
+            cache: Default::default(),
+        });
         let collision_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("collision_bind_group"),
             layout: &collision_pipeline.get_bind_group_layout(0),
@@ -238,8 +271,14 @@ impl Pipeline {
             label: Some("render_bind_group"),
             layout: &render_pipeline.get_bind_group_layout(0),
             entries: &[
-                wgpu::BindGroupEntry { binding: 0, resource: ant_buffer.as_entire_binding() },
-                wgpu::BindGroupEntry { binding: 1, resource: color_scheme_buffer.as_entire_binding() },
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: ant_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: color_scheme_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -320,7 +359,11 @@ impl Pipeline {
         self.grid_width = width;
         self.grid_height = height;
 
-        let grid_info = GridInfo { width, height, _pad: [0; 2] };
+        let grid_info = GridInfo {
+            width,
+            height,
+            _pad: [0; 2],
+        };
         queue.write_buffer(&self.grid_info_buffer, 0, bytemuck::bytes_of(&grid_info));
 
         self.pheromone_buffer = create_pheromone_buffer(device, width, height);

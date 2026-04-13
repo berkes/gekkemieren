@@ -1,4 +1,7 @@
-use crate::{ant::{Ant, AntType}, app::{self, N_ANTS}};
+use crate::{
+    ant::{Ant, AntType},
+    app::{self, N_ANTS},
+};
 
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.
@@ -12,7 +15,11 @@ pub struct Colony {
 
 impl Colony {
     pub fn new(center: [f32; 2], half_size: f32) -> Self {
-        Self { center, half_size, _pad: 0.0 }
+        Self {
+            center,
+            half_size,
+            _pad: 0.0,
+        }
     }
 }
 
@@ -31,7 +38,11 @@ pub struct Spawner {
 
 impl Spawner {
     pub fn new(colony: Colony, ant_count: usize, scout_ratio: f32) -> Self {
-        Self { colony, ant_count, scout_ratio }
+        Self {
+            colony,
+            ant_count,
+            scout_ratio,
+        }
     }
 
     pub fn initial_ants(&self) -> Vec<Ant> {

@@ -53,7 +53,13 @@ impl State {
             scout_randomness: SCOUT_RANDOMNESS,
             _pad: [0; 3],
         };
-        let pipeline = Pipeline::new(&wgpu_setup.device, &wgpu_setup.config, sim_config, ColorScheme::from_palette(Palette::BoldHues), SCOUT_RATIO)?;
+        let pipeline = Pipeline::new(
+            &wgpu_setup.device,
+            &wgpu_setup.config,
+            sim_config,
+            ColorScheme::from_palette(Palette::BoldHues),
+            SCOUT_RATIO,
+        )?;
 
         Ok(Self {
             window,
@@ -69,13 +75,18 @@ impl State {
     fn cycle_palette(&mut self) {
         self.current_palette = self.current_palette.next();
         let scheme = ColorScheme::from_palette(self.current_palette);
-        self.pipeline.set_color_scheme(&self.wgpu_setup.queue, scheme);
+        self.pipeline
+            .set_color_scheme(&self.wgpu_setup.queue, scheme);
     }
 
     fn resize(&mut self, width: u32, height: u32) {
         self.wgpu_setup.resize(width, height);
-        self.pipeline
-            .resize(&self.wgpu_setup.device, &self.wgpu_setup.queue, width, height);
+        self.pipeline.resize(
+            &self.wgpu_setup.device,
+            &self.wgpu_setup.queue,
+            width,
+            height,
+        );
         self.is_surface_configured = true;
     }
 
@@ -208,11 +219,12 @@ impl ApplicationHandler<State> for App {
                 }
             },
             WindowEvent::KeyboardInput {
-                event: KeyEvent {
-                    physical_key: PhysicalKey::Code(key),
-                    state: ElementState::Pressed,
-                    ..
-                },
+                event:
+                    KeyEvent {
+                        physical_key: PhysicalKey::Code(key),
+                        state: ElementState::Pressed,
+                        ..
+                    },
                 ..
             } => match key {
                 KeyCode::Escape => event_loop.exit(),
