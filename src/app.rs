@@ -24,11 +24,11 @@ const DOT_RADIUS: f32 = 0.001;
 const COLLISION_RADIUS: f32 = 0.0001;
 const COLLISION_ANGLE_MIN: f32 = 1.169_370_6; // 67deg
 const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
-const FORAGER_RANDOMNESS: f32 = 0.02;
-const SCOUT_RANDOMNESS: f32 = 0.8;
-const INITIAL_SCOUT_RATIO: f32 = 0.1;
+const FORAGER_RANDOMNESS: f32 = 0.1;
+const SCOUT_RANDOMNESS: f32 = 0.1;
+const INITIAL_SCOUT_RATIO: f32 = 0.75;
 const RATIO_STEP: f32 = 0.05;
-const SENSOR_DISTANCE: f32 = 0.03;
+const SENSOR_DISTANCE: f32 = 0.0060;
 const SENSOR_ANGLE: f32 = 0.524; // ~30 degrees
 
 #[derive(Debug)]

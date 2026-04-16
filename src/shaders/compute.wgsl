@@ -60,6 +60,30 @@ fn sample_pheromone(pos: vec2<f32>) -> f32 {
     return f32(atomicLoad(&pheromone_grid[y * grid_info.width + x]));
 }
 
+fn sample_pheromone_area(pos: vec2<f32>) -> f32 {
+    let clamped = clamp(pos, vec2<f32>(0.0), vec2<f32>(1.0));
+    let center_x = u32(clamped.x * f32(grid_info.width - 1u));
+    let center_y = u32(clamped.y * f32(grid_info.height - 1u));
+
+    var total: f32 = 0.0;
+    var count: f32 = 0.0;
+
+    for (var dy: i32 = -1; dy <= 1; dy++) {
+        for (var dx: i32 = -1; dx <= 1; dx++) {
+            let sx = i32(center_x) + dx;
+            let sy = i32(center_y) + dy;
+
+            // Clamp to grid bounds
+            if sx >= 0 && sx < i32(grid_info.width) && sy >= 0 && sy < i32(grid_info.height) {
+                let idx = u32(sy) * grid_info.width + u32(sx);
+                total += f32(atomicLoad(&pheromone_grid[idx]));
+                count += 1.0;
+            }
+        }
+    }
+    return total / count;
+}
+
 fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {
     let c = cos(angle);
     let s = sin(angle);
@@ -106,15 +130,23 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
 
-    let dir_norm = normalize(ant.direction);
-    let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
-    let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
-    let left_sample = sample_pheromone(left_pos);
-    let right_sample = sample_pheromone(right_pos);
-    if left_sample > right_sample {
-        ant.direction = rotate(ant.direction, config.sensor_angle);
-    } else if right_sample > left_sample {
-        ant.direction = rotate(ant.direction, -config.sensor_angle);
+    // Pheromone following for foragers only
+    if ant.ant_type == 0u {
+        let dir_norm = normalize(ant.direction);
+        let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
+        let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
+        // let left_sample = sample_pheromone_area(left_pos);
+        // let right_sample = sample_pheromone_area(right_pos);
+        let left_sample = sample_pheromone(left_pos);
+        let right_sample = sample_pheromone(right_pos);
+
+        if left_sample > right_sample {
+            ant.direction = rotate(ant.direction, config.sensor_angle);
+        } else if right_sample > left_sample {
+            ant.direction = rotate(ant.direction, -config.sensor_angle);
+        } else if left_sample == 0.0 && right_sample == 0.0 {
+            ant.direction = rotate(ant.direction, 3.141592653589793);
+        }
     }
 
     let randomness = select(config.forager_randomness, config.scout_randomness, ant.ant_type == 1u);
