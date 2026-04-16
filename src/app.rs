@@ -10,7 +10,7 @@ use winit::{
 };
 
 use crate::{
-    color_scheme::{ColorScheme, Palette},
+    color_scheme::ColorScheme,
     config::{Config, GpuConfig},
     pipeline::{RenderPipeline, SimulationPipeline},
     screenshot::{save_screenshot, save_state},
@@ -28,7 +28,6 @@ pub struct State {
     is_surface_configured: bool,
     frame_count: u32,
     log_timer: std::time::Instant,
-    current_palette: Palette,
     spawner: RandomSpawner,
 }
 
@@ -54,7 +53,7 @@ impl State {
             spawner.ants(),
         );
 
-        let color_scheme = ColorScheme::from_palette(Palette::BoldHues);
+        let color_scheme = ColorScheme::from_palette(config.palette);
         let pipeline = RenderPipeline::new(
             &wgpu_setup.device,
             wgpu_setup.config.format,
@@ -71,16 +70,9 @@ impl State {
             is_surface_configured: false,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
-            current_palette: Palette::BoldHues,
+
             spawner,
         })
-    }
-
-    fn cycle_palette(&mut self) {
-        self.current_palette = self.current_palette.next();
-        let scheme = ColorScheme::from_palette(self.current_palette);
-        self.pipeline
-            .set_color_scheme(&self.wgpu_setup.queue, scheme);
     }
 
     fn adjust_scout_ratio(&mut self, delta: f32) {
@@ -269,11 +261,14 @@ impl ApplicationHandler<State> for App {
         let window_attributes = Window::default_attributes()
             .with_title("Gekke Mieren")
             .with_inner_size(winit::dpi::Size::Physical(winit::dpi::PhysicalSize::new(
-                1024, 768,
+                self.config.window_width,
+                self.config.window_height,
             )));
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        self.state = Some(pollster::block_on(State::new(window, self.config)).unwrap());
+        self.state = Some(
+            pollster::block_on(State::new(window, self.config.clone())).unwrap(),
+        );
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: State) {
@@ -311,7 +306,6 @@ impl ApplicationHandler<State> for App {
                 ..
             } => match key {
                 KeyCode::Escape => event_loop.exit(),
-                KeyCode::KeyC => state.cycle_palette(),
                 KeyCode::ArrowUp => state.adjust_scout_ratio(state.config.ratio_step),
                 KeyCode::ArrowDown => state.adjust_scout_ratio(-state.config.ratio_step),
                 KeyCode::KeyS => {

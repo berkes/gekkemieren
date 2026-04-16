@@ -11,10 +11,12 @@ use anyhow::{Context, Result};
 use bytemuck::{Pod, Zeroable};
 use serde::{Deserialize, Serialize};
 
+use crate::color_scheme::Palette;
+
 /// Main application configuration holding all simulation parameters.
 /// Uses natural Rust types (e.g., usize for counts).
 /// All fields are required and must be present in the config file.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub decay_amount: u32,
     pub max_strength: u32,
@@ -31,6 +33,9 @@ pub struct Config {
     pub base_speed: f32,
     pub scout_ratio: f32,
     pub ratio_step: f32,
+    pub window_width: u32,
+    pub window_height: u32,
+    pub palette: Palette,
 }
 
 impl Config {
@@ -66,7 +71,11 @@ pub struct GpuConfig {
     pub base_speed: f32,
     pub scout_ratio: f32,
     pub ratio_step: f32,
-    pub _pad: [u32; 2],
+    // Window and UI settings (not used by GPU shaders but included for simplicity)
+    pub window_width: u32,
+    pub window_height: u32,
+    pub _pad1: u32,
+    pub _pad2: u32,
 }
 
 impl From<&Config> for GpuConfig {
@@ -87,7 +96,10 @@ impl From<&Config> for GpuConfig {
             base_speed: config.base_speed,
             scout_ratio: config.scout_ratio,
             ratio_step: config.ratio_step,
-            _pad: [0; 2],
+            window_width: config.window_width,
+            window_height: config.window_height,
+            _pad1: 0,
+            _pad2: 0,
         }
     }
 }

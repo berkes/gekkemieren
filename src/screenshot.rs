@@ -28,7 +28,7 @@ pub fn save_state(
     let toml_path = filename.with_extension("toml");
     let toml_string = toml::to_string_pretty(config)?;
     fs::write(&toml_path, toml_string)?;
-    log::debug!("Saved simulation config to {}", toml_path.display());
+    log::debug!("Saved simulation state to {}", toml_path.display());
 
     log::info!("Saved state to {}/{}", saves_dir.display(), timestamp);
     Ok(filename)

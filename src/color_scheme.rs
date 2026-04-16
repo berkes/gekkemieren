@@ -7,7 +7,10 @@ pub struct ColorScheme {
     pub pheromone: [f32; 4],
 }
 
-#[derive(Clone, Copy, Debug)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Palette {
     BoldHues,
     WarmEarth,
@@ -45,9 +48,9 @@ impl ColorScheme {
             Palette::OceanSunsetVibes => Self {
                 // https://coolors.co/palette/26547c-ef476f-ffd166-06d6a0
                 background: [0.149, 0.325, 0.478, 1.0], // #26547C Dusk Blue background
-                forager: [0.988, 0.824, 0.412, 1.0],     // #FFD166 Royal Gold - Foragers
-                scout: [0.922, 0.298, 0.443, 1.0],   // #EF476F Bubblegum Pink - Scouts
-                pheromone: [0.027, 0.851, 0.635, 1.0], // #06D6A0 Emerald - Pheromones
+                pheromone: [0.988, 0.824, 0.412, 1.0],     // #FFD166 Royal Gold
+                scout: [0.922, 0.298, 0.443, 1.0],   // #EF476F Bubblegum Pink
+                forager: [0.027, 0.851, 0.635, 1.0], // #06D6A0 Emerald
             }
         }
     }

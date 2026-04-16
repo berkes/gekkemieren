@@ -28,6 +28,8 @@ struct GpuConfig {
     base_speed: f32,
     scout_ratio: f32,
     ratio_step: f32,
+    window_width: u32,
+    window_height: u32,
     _pad1: u32,
     _pad2: u32,
 }

@@ -1,7 +1,7 @@
 # Ant Simulation Configuration
 
 # Pheromone decay settings
-decay_amount = 2        # Amount to decay each tick
+decay_amount = 1        # Amount to decay each tick
 max_strength = 1000     # Maximum pheromone strength
 
 # Pheromone deposit settings
@@ -30,3 +30,10 @@ base_speed = 0.0015       # Base movement speed of ants
 # Scout/forager ratio
 scout_ratio = 0.75       # Initial ratio of scout ants (0.0 to 1.0)
 ratio_step = 0.05        # Step size for adjusting ratio with arrow keys
+
+# Window settings
+window_width = 1980      # Initial window width in pixels
+window_height = 1200     # Initial window height in pixels
+
+# Color palette (boldhues, warmearth, oceansunsetvibes)
+palette = "boldhues"

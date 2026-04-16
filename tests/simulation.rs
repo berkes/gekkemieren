@@ -2,6 +2,7 @@ mod common;
 
 use gekkemieren::{
     ant::{Ant, AntType},
+    color_scheme::Palette,
     config::{Config, GpuConfig},
     pipeline::SimulationPipeline,
     spawn::{AntSpawner, Colony, FixedSpawner},
@@ -28,6 +29,9 @@ fn config() -> Config {
         base_speed: 0.0, // not used in test
         scout_ratio: 0.0, // not used in test
         ratio_step: 0.0, // not used in test
+        window_width: 64, // test grid size
+        window_height: 64,
+        palette: Palette::BoldHues,
     }
 }
 
