@@ -3,5 +3,6 @@ pub mod app;
 pub mod color_scheme;
 pub mod pheromone;
 pub mod pipeline;
+pub mod screenshot;
 pub mod spawn;
 pub mod wgpu_setup;

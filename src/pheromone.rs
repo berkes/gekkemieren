@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct GridInfo {
     pub width: u32,
     pub height: u32,
@@ -7,7 +7,7 @@ pub struct GridInfo {
 }
 
 #[repr(C)]
-#[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct SimConfig {
     pub decay_amount: u32,
     pub max_strength: u32,

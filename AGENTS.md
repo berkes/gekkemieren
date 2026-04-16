@@ -24,6 +24,8 @@ find and retrieve food and avoid obstructions.
 - **GPU setup** (`src/wgpu_setup.rs`): Boilerplate for WGPU
 - **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup. Uses shaders under `src/shaders`.
 - **Ant -or agent-** (`src/ant.rs`): Agent behaviour
+- **Docs** (`docs`): Markdown documentation with handpicked example screenshots
+- **Saves** (`src/screenshot.rs` and `saves/*`): Saves of screenshots with their corresponding config as JSON. NEVER delete saves!
 
 ## Development Notes
 

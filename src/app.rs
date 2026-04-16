@@ -11,6 +11,7 @@ use crate::{
     color_scheme::{ColorScheme, Palette},
     pheromone::SimConfig,
     pipeline::{RenderPipeline, SimulationPipeline},
+    screenshot::{save_screenshot, save_state},
     spawn::{AntSpawner, Colony, RandomSpawner},
     wgpu_setup::WgpuSetup,
 };
@@ -37,6 +38,7 @@ pub struct State {
     wgpu_setup: WgpuSetup,
     simulation: SimulationPipeline,
     pipeline: RenderPipeline,
+    sim_config: SimConfig,
     is_surface_configured: bool,
     frame_count: u32,
     log_timer: std::time::Instant,
@@ -89,6 +91,7 @@ impl State {
             wgpu_setup,
             simulation,
             pipeline,
+            sim_config,
             is_surface_configured: false,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
@@ -216,6 +219,54 @@ impl State {
 
         Ok(())
     }
+
+}
+
+impl State {
+    fn save_screenshot(&mut self) -> anyhow::Result<()> {
+        let background_color = self.pipeline.background_color;
+        let filename = save_state(
+            &self.wgpu_setup.device,
+            &self.wgpu_setup.queue,
+            &self.wgpu_setup.config,
+            &self.sim_config,
+            N_ANTS,
+            self.current_scout_ratio,
+            BASE_SPEED,
+            background_color,
+        )?;
+
+        let png_path = filename.with_extension("png");
+        save_screenshot(
+            &self.wgpu_setup.device,
+            &self.wgpu_setup.queue,
+            &self.wgpu_setup.config,
+            background_color,
+            &png_path,
+            |encoder: &mut wgpu::CommandEncoder, texture_view: &wgpu::TextureView| {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Screenshot Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: texture_view,
+                        resolve_target: None,
+                        depth_slice: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(background_color),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    depth_stencil_attachment: None,
+                    occlusion_query_set: None,
+                    timestamp_writes: None,
+                    multiview_mask: None,
+                });
+                self.simulation.update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+                self.pipeline.draw(&mut render_pass, self.simulation.ant_count as u32);
+            },
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -279,6 +330,11 @@ impl ApplicationHandler<State> for App {
                 KeyCode::KeyC => state.cycle_palette(),
                 KeyCode::ArrowUp => state.adjust_scout_ratio(RATIO_STEP),
                 KeyCode::ArrowDown => state.adjust_scout_ratio(-RATIO_STEP),
+                KeyCode::KeyS => {
+                    if let Err(e) = state.save_screenshot() {
+                        log::error!("Failed to save screenshot: {:?}", e);
+                    }
+                }
                 _ => {}
             },
             _ => {}
