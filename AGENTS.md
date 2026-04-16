@@ -1,6 +1,8 @@
 # Gekke Mieren
 
-A GPU-accelerated Ant simulation written in Rust using WGPU compute shaders. The simulation models emergent behavior of millions of agents following simple rules, creating complex organic patterns. 
+A GPU-accelerated Ant simulation written in Rust using WGPU compute shaders. The
+simulation models emergent behavior of millions of agents following simple
+rules, creating complex organic patterns. 
 
 Running the application will visualize moving Ants that use pheromone trails to
 find and retrieve food and avoid obstructions.
@@ -10,7 +12,8 @@ find and retrieve food and avoid obstructions.
 ### Building and Running
 - **Development build**: `cargo run`
 - **Test**: `cargo test`
-- **Lint and check**: `cargo check`
+- **Check**: `cargo check`
+- **Lint**: `cargo clippy`
 - **Format**: `cargo fmt`
 
 ## Architecture Overview
@@ -32,7 +35,7 @@ Develop in small iterations. Each iteration:
 * run tests, expect them to fail
 * change code
 * run tests
-* run lint and format to determine warnings and errors
+* run lint, check and format determine warnings and errors and format the code
 * repeat these steps until no warnings or errors exist in tests, linting and formatting
 * run the app and asks human for confirmation. Explain what the human should look for:
   * When refactoring: ask that everything works as before
@@ -48,7 +51,7 @@ Develop in small iterations. Each iteration:
 
 ### Performance Considerations
 
-- Agent count directly impacts GPU workload
+- Agent count exponentially impacts GPU workload, due to the collision detection
 - Texture size limited by GPU capabilities
 - Frame limiting available for power management
 
