@@ -9,28 +9,12 @@ use winit::{
 
 use crate::{
     color_scheme::{ColorScheme, Palette},
-    pheromone::SimConfig,
+    config::Config,
     pipeline::{RenderPipeline, SimulationPipeline},
     screenshot::{save_screenshot, save_state},
     spawn::{AntSpawner, Colony, RandomSpawner},
     wgpu_setup::WgpuSetup,
 };
-
-pub const BASE_SPEED: f32 = 0.0015;
-pub const N_ANTS: usize = 15000;
-const DECAY_AMOUNT: u32 = 1;
-const MAX_STRENGTH: u32 = 1000;
-const DEPOSIT_AMOUNT: u32 = 50;
-const DOT_RADIUS: f32 = 0.001;
-const COLLISION_RADIUS: f32 = 0.0001;
-const COLLISION_ANGLE_MIN: f32 = 1.169_370_6; // 67deg
-const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
-const FORAGER_RANDOMNESS: f32 = 0.1;
-const SCOUT_RANDOMNESS: f32 = 0.1;
-const INITIAL_SCOUT_RATIO: f32 = 0.75;
-const RATIO_STEP: f32 = 0.05;
-const SENSOR_DISTANCE: f32 = 0.0060;
-const SENSOR_ANGLE: f32 = 0.524; // ~30 degrees
 
 #[derive(Debug)]
 pub struct State {
@@ -38,7 +22,7 @@ pub struct State {
     wgpu_setup: WgpuSetup,
     simulation: SimulationPipeline,
     pipeline: RenderPipeline,
-    sim_config: SimConfig,
+    config: Config,
     is_surface_configured: bool,
     frame_count: u32,
     log_timer: std::time::Instant,
@@ -51,23 +35,15 @@ impl State {
     async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
 
-        let sim_config = SimConfig {
-            decay_amount: DECAY_AMOUNT,
-            max_strength: MAX_STRENGTH,
-            deposit_amount: DEPOSIT_AMOUNT,
-            dot_radius: DOT_RADIUS,
-            collision_radius: COLLISION_RADIUS,
-            collision_angle_min: COLLISION_ANGLE_MIN,
-            collision_angle_max: COLLISION_ANGLE_MAX,
-            forager_randomness: FORAGER_RANDOMNESS,
-            scout_randomness: SCOUT_RANDOMNESS,
-            sensor_distance: SENSOR_DISTANCE,
-            sensor_angle: SENSOR_ANGLE,
-            _pad: [0; 1],
-        };
+        let config = Config::default();
+        let sim_config = config.sim_config();
 
-        let spawner =
-            RandomSpawner::new(Colony::default(), N_ANTS, INITIAL_SCOUT_RATIO, BASE_SPEED);
+        let spawner = RandomSpawner::new(
+            Colony::default(),
+            config.n_ants,
+            config.initial_scout_ratio,
+            config.base_speed,
+        );
 
         let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
@@ -91,12 +67,12 @@ impl State {
             wgpu_setup,
             simulation,
             pipeline,
-            sim_config,
+            config,
             is_surface_configured: false,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
             current_palette: Palette::BoldHues,
-            current_scout_ratio: INITIAL_SCOUT_RATIO,
+            current_scout_ratio: config.initial_scout_ratio,
             spawner,
         })
     }
@@ -229,10 +205,7 @@ impl State {
             &self.wgpu_setup.device,
             &self.wgpu_setup.queue,
             &self.wgpu_setup.config,
-            &self.sim_config,
-            N_ANTS,
-            self.current_scout_ratio,
-            BASE_SPEED,
+            &self.config,
             background_color,
         )?;
 
@@ -328,8 +301,8 @@ impl ApplicationHandler<State> for App {
             } => match key {
                 KeyCode::Escape => event_loop.exit(),
                 KeyCode::KeyC => state.cycle_palette(),
-                KeyCode::ArrowUp => state.adjust_scout_ratio(RATIO_STEP),
-                KeyCode::ArrowDown => state.adjust_scout_ratio(-RATIO_STEP),
+                KeyCode::ArrowUp => state.adjust_scout_ratio(state.config.ratio_step),
+                KeyCode::ArrowDown => state.adjust_scout_ratio(-state.config.ratio_step),
                 KeyCode::KeyS => {
                     if let Err(e) = state.save_screenshot() {
                         log::error!("Failed to save screenshot: {:?}", e);

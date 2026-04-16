@@ -2,7 +2,8 @@ use wgpu::util::DeviceExt;
 
 use crate::ant::Ant;
 use crate::color_scheme::ColorScheme;
-use crate::pheromone::{GridInfo, SimConfig};
+use crate::config::SimConfig;
+use crate::pheromone::GridInfo;
 use crate::spawn::Colony;
 
 // ── helpers shared by both pipeline types ────────────────────────────────────

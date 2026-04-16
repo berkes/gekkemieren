@@ -10,7 +10,7 @@ use png::{BitDepth, ColorType, Encoder};
 use serde::Serialize;
 use wgpu::{Device, Queue, SurfaceConfiguration};
 
-use crate::pheromone::SimConfig;
+use crate::config::Config;
 
 #[derive(Serialize)]
 pub struct SimulationConfig {
@@ -30,8 +30,9 @@ pub struct SimulationConfig {
     pub base_speed: f32,
 }
 
-impl From<(&SimConfig, usize, f32, f32)> for SimulationConfig {
-    fn from((sim_config, n_ants, scout_ratio, base_speed): (&SimConfig, usize, f32, f32)) -> Self {
+impl From<&Config> for SimulationConfig {
+    fn from(config: &Config) -> Self {
+        let sim_config = config.sim_config;
         Self {
             decay_amount: sim_config.decay_amount,
             max_strength: sim_config.max_strength,
@@ -44,9 +45,9 @@ impl From<(&SimConfig, usize, f32, f32)> for SimulationConfig {
             scout_randomness: sim_config.scout_randomness,
             sensor_distance: sim_config.sensor_distance,
             sensor_angle: sim_config.sensor_angle,
-            n_ants,
-            scout_ratio,
-            base_speed,
+            n_ants: config.n_ants,
+            scout_ratio: config.initial_scout_ratio,
+            base_speed: config.base_speed,
         }
     }
 }
@@ -55,10 +56,7 @@ pub fn save_state(
     _device: &Device,
     _queue: &Queue,
     _config: &SurfaceConfiguration,
-    sim_config: &SimConfig,
-    n_ants: usize,
-    scout_ratio: f32,
-    base_speed: f32,
+    config: &Config,
     _background_color: wgpu::Color,
 ) -> Result<PathBuf> {
     let timestamp = Local::now().format("%Y%m%d_%H%M%S").to_string();
@@ -68,7 +66,7 @@ pub fn save_state(
     let filename = saves_dir.join(format!("{}_sim", timestamp));
 
     // Save config as JSON
-    let simulation_config = SimulationConfig::from((sim_config, n_ants, scout_ratio, base_speed));
+    let simulation_config = SimulationConfig::from(config);
     let json_path = filename.with_extension("json");
     let json_string = serde_json::to_string_pretty(&simulation_config)?;
     fs::write(&json_path, json_string)?;
