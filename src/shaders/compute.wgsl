@@ -12,7 +12,7 @@ struct GridInfo {
     _pad2: u32,
 }
 
-struct SimConfig {
+struct GpuConfig {
     decay_amount: u32,
     max_strength: u32,
     deposit_amount: u32,
@@ -24,13 +24,18 @@ struct SimConfig {
     scout_randomness: f32,
     sensor_distance: f32,
     sensor_angle: f32,
+    n_ants: u32,
+    base_speed: f32,
+    scout_ratio: f32,
+    ratio_step: f32,
     _pad1: u32,
+    _pad2: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
 @group(0) @binding(2) var<storage, read_write> pheromone_grid: array<atomic<u32>>;
 @group(0) @binding(3) var<uniform> grid_info: GridInfo;
-@group(0) @binding(4) var<uniform> config: SimConfig;
+@group(0) @binding(4) var<uniform> config: GpuConfig;
 
 fn hash(v: vec2<f32>) -> f32 {
     return fract(sin(dot(v, vec2<f32>(127.1, 311.7))) * 43758.5453);

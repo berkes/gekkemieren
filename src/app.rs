@@ -1,4 +1,6 @@
+use std::path::PathBuf;
 use std::sync::Arc;
+use anyhow::{Context, Result};
 use winit::{
     application::ApplicationHandler,
     event::*,
@@ -9,7 +11,7 @@ use winit::{
 
 use crate::{
     color_scheme::{ColorScheme, Palette},
-    config::Config,
+    config::{Config, GpuConfig},
     pipeline::{RenderPipeline, SimulationPipeline},
     screenshot::{save_screenshot, save_state},
     spawn::{AntSpawner, Colony, RandomSpawner},
@@ -27,21 +29,19 @@ pub struct State {
     frame_count: u32,
     log_timer: std::time::Instant,
     current_palette: Palette,
-    current_scout_ratio: f32,
     spawner: RandomSpawner,
 }
 
 impl State {
-    async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
+    async fn new(window: Arc<Window>, config: Config) -> Result<Self> {
         let wgpu_setup = WgpuSetup::new(window.clone()).await?;
 
-        let config = Config::default();
-        let sim_config = config.sim_config();
+        let gpu_config = GpuConfig::from(&config);
 
         let spawner = RandomSpawner::new(
             Colony::default(),
             config.n_ants,
-            config.initial_scout_ratio,
+            config.scout_ratio,
             config.base_speed,
         );
 
@@ -49,7 +49,7 @@ impl State {
             &wgpu_setup.device,
             wgpu_setup.config.width,
             wgpu_setup.config.height,
-            sim_config,
+            gpu_config,
             spawner.colony(),
             spawner.ants(),
         );
@@ -72,7 +72,6 @@ impl State {
             frame_count: 0,
             log_timer: std::time::Instant::now(),
             current_palette: Palette::BoldHues,
-            current_scout_ratio: config.initial_scout_ratio,
             spawner,
         })
     }
@@ -85,9 +84,9 @@ impl State {
     }
 
     fn adjust_scout_ratio(&mut self, delta: f32) {
-        let new_ratio = (self.current_scout_ratio + delta).clamp(0.0, 1.0);
-        if new_ratio != self.current_scout_ratio {
-            self.current_scout_ratio = new_ratio;
+        let new_ratio = (self.config.scout_ratio + delta).clamp(0.0, 1.0);
+        if new_ratio != self.config.scout_ratio {
+            self.config.scout_ratio = new_ratio;
             // Read current ant state from GPU (includes positions/directions)
             let ants = self.simulation.read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
             // Update types while preserving positions/directions
@@ -98,6 +97,14 @@ impl State {
                 &self.simulation.ant_buffer,
                 0,
                 bytemuck::cast_slice(self.spawner.ants()),
+            );
+            
+            // Update GPU config buffer with new scout ratio
+            let gpu_config = GpuConfig::from(&self.config);
+            self.wgpu_setup.queue.write_buffer(
+                &self.simulation.config_buffer,
+                0,
+                bytemuck::bytes_of(&gpu_config),
             );
         }
     }
@@ -120,7 +127,7 @@ impl State {
         self.frame_count += 1;
         if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
             log::debug!("fps: {}", self.frame_count,);
-            log::debug!("ratio: {:.2}", self.current_scout_ratio);
+            log::debug!("ratio: {:.2}", self.config.scout_ratio);
             self.frame_count = 0;
             self.log_timer = std::time::Instant::now();
         }
@@ -245,11 +252,15 @@ impl State {
 #[derive(Debug)]
 pub struct App {
     state: Option<State>,
+    config: Config,
 }
 
 impl App {
-    fn new() -> Self {
-        Self { state: None }
+    fn new(config: Config) -> Self {
+        Self {
+            state: None,
+            config,
+        }
     }
 }
 
@@ -262,7 +273,7 @@ impl ApplicationHandler<State> for App {
             )));
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        self.state = Some(pollster::block_on(State::new(window)).unwrap());
+        self.state = Some(pollster::block_on(State::new(window, self.config)).unwrap());
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: State) {
@@ -318,8 +329,21 @@ impl ApplicationHandler<State> for App {
 pub fn run() -> anyhow::Result<()> {
     env_logger::init();
 
+    // Get config file path from command line arguments
+    // First argument (if any) is the config file path, otherwise use default "config.toml"
+    let args: Vec<String> = std::env::args().collect();
+    let config_path = if args.len() > 1 {
+        PathBuf::from(&args[1])
+    } else {
+        PathBuf::from("config.toml")
+    };
+
+    // Load configuration from file
+    let config = Config::from_file(&config_path)
+        .with_context(|| format!("Failed to load configuration from: {}", config_path.display()))?;
+
     let event_loop = EventLoop::with_user_event().build()?;
-    let mut app = App::new();
+    let mut app = App::new(config);
     event_loop.run_app(&mut app)?;
 
     Ok(())

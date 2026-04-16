@@ -7,50 +7,9 @@ use std::{
 use anyhow::Result;
 use chrono::Local;
 use png::{BitDepth, ColorType, Encoder};
-use serde::Serialize;
 use wgpu::{Device, Queue, SurfaceConfiguration};
 
 use crate::config::Config;
-
-#[derive(Serialize)]
-pub struct SimulationConfig {
-    pub decay_amount: u32,
-    pub max_strength: u32,
-    pub deposit_amount: u32,
-    pub dot_radius: f32,
-    pub collision_radius: f32,
-    pub collision_angle_min: f32,
-    pub collision_angle_max: f32,
-    pub forager_randomness: f32,
-    pub scout_randomness: f32,
-    pub sensor_distance: f32,
-    pub sensor_angle: f32,
-    pub n_ants: usize,
-    pub scout_ratio: f32,
-    pub base_speed: f32,
-}
-
-impl From<&Config> for SimulationConfig {
-    fn from(config: &Config) -> Self {
-        let sim_config = config.sim_config;
-        Self {
-            decay_amount: sim_config.decay_amount,
-            max_strength: sim_config.max_strength,
-            deposit_amount: sim_config.deposit_amount,
-            dot_radius: sim_config.dot_radius,
-            collision_radius: sim_config.collision_radius,
-            collision_angle_min: sim_config.collision_angle_min,
-            collision_angle_max: sim_config.collision_angle_max,
-            forager_randomness: sim_config.forager_randomness,
-            scout_randomness: sim_config.scout_randomness,
-            sensor_distance: sim_config.sensor_distance,
-            sensor_angle: sim_config.sensor_angle,
-            n_ants: config.n_ants,
-            scout_ratio: config.initial_scout_ratio,
-            base_speed: config.base_speed,
-        }
-    }
-}
 
 pub fn save_state(
     _device: &Device,
@@ -65,12 +24,11 @@ pub fn save_state(
 
     let filename = saves_dir.join(format!("{}_sim", timestamp));
 
-    // Save config as JSON
-    let simulation_config = SimulationConfig::from(config);
-    let json_path = filename.with_extension("json");
-    let json_string = serde_json::to_string_pretty(&simulation_config)?;
-    fs::write(&json_path, json_string)?;
-    log::debug!("Saved simulation config to {}", json_path.display());
+    // Save config as TOML
+    let toml_path = filename.with_extension("toml");
+    let toml_string = toml::to_string_pretty(config)?;
+    fs::write(&toml_path, toml_string)?;
+    log::debug!("Saved simulation config to {}", toml_path.display());
 
     log::info!("Saved state to {}/{}", saves_dir.display(), timestamp);
     Ok(filename)

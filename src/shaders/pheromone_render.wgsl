@@ -5,7 +5,7 @@ struct GridInfo {
     _pad2: u32,
 }
 
-struct SimConfig {
+struct GpuConfig {
     decay_amount: u32,
     max_strength: u32,
     deposit_amount: u32,
@@ -17,7 +17,12 @@ struct SimConfig {
     scout_randomness: f32,
     sensor_distance: f32,
     sensor_angle: f32,
+    n_ants: u32,
+    base_speed: f32,
+    scout_ratio: f32,
+    ratio_step: f32,
     _pad1: u32,
+    _pad2: u32,
 }
 
 struct ColorScheme {
@@ -29,7 +34,7 @@ struct ColorScheme {
 
 @group(0) @binding(0) var<storage, read> pheromone_grid: array<u32>;
 @group(0) @binding(1) var<uniform> grid_info: GridInfo;
-@group(0) @binding(2) var<uniform> config: SimConfig;
+@group(0) @binding(2) var<uniform> config: GpuConfig;
 @group(0) @binding(3) var<uniform> colors: ColorScheme;
 
 const FULLSCREEN_QUAD = array<vec2<f32>, 6>(

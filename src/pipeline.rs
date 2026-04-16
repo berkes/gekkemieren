@@ -2,7 +2,7 @@ use wgpu::util::DeviceExt;
 
 use crate::ant::Ant;
 use crate::color_scheme::ColorScheme;
-use crate::config::SimConfig;
+use crate::config::GpuConfig;
 use crate::pheromone::GridInfo;
 use crate::spawn::Colony;
 
@@ -131,7 +131,7 @@ impl SimulationPipeline {
         device: &wgpu::Device,
         width: u32,
         height: u32,
-        sim_config: SimConfig,
+        config: GpuConfig,
         colony: &Colony,
         ants: &[Ant],
     ) -> Self {
@@ -162,7 +162,7 @@ impl SimulationPipeline {
         let pheromone_buffer = create_pheromone_buffer(device, width, height);
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
-            contents: bytemuck::bytes_of(&sim_config),
+            contents: bytemuck::bytes_of(&config),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 

@@ -1,15 +1,21 @@
 //! Central configuration module for the ant simulation.
 //!
-//! This module holds all simulation constants in a single `Config` struct
-//! that is passed to both the GPU (via buffers) and used on the CPU.
+//! This module holds all simulation constants in a `Config` struct for CPU use,
+//! and a `GpuConfig` struct for GPU buffer compatibility.
+//!
+//! Configuration is loaded from a TOML file. All fields are required.
 
+use std::path::Path;
+
+use anyhow::{Context, Result};
 use bytemuck::{Pod, Zeroable};
+use serde::{Deserialize, Serialize};
 
-/// Simulation-wide constants that are passed to GPU shaders.
-/// Must match the `SimConfig` struct in all WGSL shaders.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Pod, Zeroable)]
-pub struct SimConfig {
+/// Main application configuration holding all simulation parameters.
+/// Uses natural Rust types (e.g., usize for counts).
+/// All fields are required and must be present in the config file.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Config {
     pub decay_amount: u32,
     pub max_strength: u32,
     pub deposit_amount: u32,
@@ -21,47 +27,67 @@ pub struct SimConfig {
     pub scout_randomness: f32,
     pub sensor_distance: f32,
     pub sensor_angle: f32,
-    pub _pad: [u32; 1],
-}
-
-/// Main application configuration holding all simulation parameters.
-#[derive(Clone, Copy, Debug)]
-pub struct Config {
-    pub sim_config: SimConfig,
     pub n_ants: usize,
     pub base_speed: f32,
-    pub initial_scout_ratio: f32,
+    pub scout_ratio: f32,
     pub ratio_step: f32,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            sim_config: SimConfig {
-                decay_amount: 1,
-                max_strength: 1000,
-                deposit_amount: 50,
-                dot_radius: 0.001,
-                collision_radius: 0.0001,
-                collision_angle_min: 1.169_370_6, // 67 degrees
-                collision_angle_max: 1.954_768_8, // 112 degrees
-                forager_randomness: 0.1,
-                scout_randomness: 0.1,
-                sensor_distance: 0.0060,
-                sensor_angle: 0.524, // ~30 degrees
-                _pad: [0; 1],
-            },
-            n_ants: 15000,
-            base_speed: 0.0015,
-            initial_scout_ratio: 0.75,
-            ratio_step: 0.05,
-        }
+impl Config {
+    /// Load configuration from a TOML file.
+    /// Fails if the file cannot be read or deserialized.
+    pub fn from_file(path: &Path) -> Result<Self> {
+        let content = std::fs::read_to_string(path)
+            .with_context(|| format!("Failed to read config file: {}", path.display()))?;
+        let config: Config = toml::from_str(&content)
+            .with_context(|| format!("Failed to parse config file: {}", path.display()))?;
+        Ok(config)
     }
 }
 
-impl Config {
-    /// Returns the GPU-compatible simulation config.
-    pub fn sim_config(&self) -> SimConfig {
-        self.sim_config
+/// GPU-compatible configuration struct.
+/// Must be #[repr(C)] and Pod/Zeroable for GPU buffer compatibility.
+/// Must match the `GpuConfig` struct in all WGSL shaders.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable, Serialize)]
+pub struct GpuConfig {
+    pub decay_amount: u32,
+    pub max_strength: u32,
+    pub deposit_amount: u32,
+    pub dot_radius: f32,
+    pub collision_radius: f32,
+    pub collision_angle_min: f32,
+    pub collision_angle_max: f32,
+    pub forager_randomness: f32,
+    pub scout_randomness: f32,
+    pub sensor_distance: f32,
+    pub sensor_angle: f32,
+    pub n_ants: u32,
+    pub base_speed: f32,
+    pub scout_ratio: f32,
+    pub ratio_step: f32,
+    pub _pad: [u32; 2],
+}
+
+impl From<&Config> for GpuConfig {
+    fn from(config: &Config) -> Self {
+        Self {
+            decay_amount: config.decay_amount,
+            max_strength: config.max_strength,
+            deposit_amount: config.deposit_amount,
+            dot_radius: config.dot_radius,
+            collision_radius: config.collision_radius,
+            collision_angle_min: config.collision_angle_min,
+            collision_angle_max: config.collision_angle_max,
+            forager_randomness: config.forager_randomness,
+            scout_randomness: config.scout_randomness,
+            sensor_distance: config.sensor_distance,
+            sensor_angle: config.sensor_angle,
+            n_ants: config.n_ants as u32,
+            base_speed: config.base_speed,
+            scout_ratio: config.scout_ratio,
+            ratio_step: config.ratio_step,
+            _pad: [0; 2],
+        }
     }
 }

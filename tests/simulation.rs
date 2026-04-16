@@ -2,15 +2,15 @@ mod common;
 
 use gekkemieren::{
     ant::{Ant, AntType},
-    config::SimConfig,
+    config::{Config, GpuConfig},
     pipeline::SimulationPipeline,
     spawn::{AntSpawner, Colony, FixedSpawner},
 };
 
 const COLLISION_RADIUS: f32 = 0.0001;
 
-fn sim_config() -> SimConfig {
-    SimConfig {
+fn config() -> Config {
+    Config {
         decay_amount: 1,
         max_strength: 1000,
         deposit_amount: 50,
@@ -24,8 +24,15 @@ fn sim_config() -> SimConfig {
         scout_randomness: 0.0,
         sensor_distance: 0.03,
         sensor_angle: 0.5,
-        _pad: [0; 1],
+        n_ants: 0, // not used in test
+        base_speed: 0.0, // not used in test
+        scout_ratio: 0.0, // not used in test
+        ratio_step: 0.0, // not used in test
     }
+}
+
+fn gpu_config() -> GpuConfig {
+    GpuConfig::from(&config())
 }
 
 fn make_sim(ants: Vec<Ant>) -> (common::HeadlessGpuSetup, SimulationPipeline) {
@@ -35,7 +42,7 @@ fn make_sim(ants: Vec<Ant>) -> (common::HeadlessGpuSetup, SimulationPipeline) {
         &setup.device,
         64,
         64,
-        sim_config(),
+        gpu_config(),
         spawner.colony(),
         spawner.ants(),
     );

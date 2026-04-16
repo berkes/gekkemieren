@@ -1,0 +1,32 @@
+# Ant Simulation Configuration
+
+# Pheromone decay settings
+decay_amount = 2        # Amount to decay each tick
+max_strength = 1000     # Maximum pheromone strength
+
+# Pheromone deposit settings
+deposit_amount = 50    # Amount of pheromone deposited per ant per tick
+
+# Visual settings
+dot_radius = 0.001      # Radius of pheromone dots in render
+
+# Ant collision settings
+collision_radius = 0.0001        # Radius at which ants detect collisions
+collision_angle_min = 1.1693706  # ~67 degrees - minimum collision angle
+collision_angle_max = 1.9547688  # ~112 degrees - maximum collision angle
+
+# Ant movement randomness
+forager_randomness = 0.1   # Randomness factor for forager ants
+scout_randomness = 0.1     # Randomness factor for scout ants
+
+# Ant sensor settings (for pheromone following)
+sensor_distance = 0.006   # Distance from ant to sense pheromones
+sensor_angle = 0.524      # ~30 degrees - angle offset for sensors
+
+# Population settings
+n_ants = 15000            # Number of ants in the simulation
+base_speed = 0.0015       # Base movement speed of ants
+
+# Scout/forager ratio
+scout_ratio = 0.75       # Initial ratio of scout ants (0.0 to 1.0)
+ratio_step = 0.05        # Step size for adjusting ratio with arrow keys
