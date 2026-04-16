@@ -15,16 +15,7 @@ pub enum Palette {
     BoldHues,
     WarmEarth,
     OceanSunsetVibes,
-}
-
-impl Palette {
-    pub fn next(self) -> Self {
-        match self {
-            Palette::BoldHues => Palette::WarmEarth,
-            Palette::WarmEarth => Palette::OceanSunsetVibes,
-            Palette::OceanSunsetVibes => Palette::BoldHues,
-        }
-    }
+    Debug
 }
 
 impl ColorScheme {
@@ -51,7 +42,13 @@ impl ColorScheme {
                 pheromone: [0.988, 0.824, 0.412, 1.0],     // #FFD166 Royal Gold
                 scout: [0.922, 0.298, 0.443, 1.0],   // #EF476F Bubblegum Pink
                 forager: [0.027, 0.851, 0.635, 1.0], // #06D6A0 Emerald
-            }
+            },
+            Palette::Debug => Self {
+                background: [1.0, 1.0, 1.0, 1.0],
+                forager: [0.0, 0.0, 0.0, 1.0],
+                scout: [0.0, 0.0, 1.0, 1.0],
+                pheromone: [0.0, 1.0, 0.0, 1.0],
+            },
         }
     }
 }
