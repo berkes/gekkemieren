@@ -11,13 +11,15 @@ pub struct ColorScheme {
 pub enum Palette {
     BoldHues,
     WarmEarth,
+    OceanSunsetVibes,
 }
 
 impl Palette {
     pub fn next(self) -> Self {
         match self {
             Palette::BoldHues => Palette::WarmEarth,
-            Palette::WarmEarth => Palette::BoldHues,
+            Palette::WarmEarth => Palette::OceanSunsetVibes,
+            Palette::OceanSunsetVibes => Palette::BoldHues,
         }
     }
 }
@@ -40,6 +42,13 @@ impl ColorScheme {
                 scout: [0.788, 0.796, 0.639, 1.0],     // #c9cba3
                 pheromone: [1.000, 0.882, 0.659, 1.0], // #ffe1a8
             },
+            Palette::OceanSunsetVibes => Self {
+                // https://coolors.co/palette/26547c-ef476f-ffd166-06d6a0
+                background: [0.149, 0.325, 0.478, 1.0], // #26547C Dusk Blue background
+                forager: [0.988, 0.824, 0.412, 1.0],     // #FFD166 Royal Gold - Foragers
+                scout: [0.922, 0.298, 0.443, 1.0],   // #EF476F Bubblegum Pink - Scouts
+                pheromone: [0.027, 0.851, 0.635, 1.0], // #06D6A0 Emerald - Pheromones
+            }
         }
     }
 }
