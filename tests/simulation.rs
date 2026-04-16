@@ -74,8 +74,8 @@ fn ant_moves_to_exact_position() {
 fn ants_keep_direction_without_collision() {
     // Two ants far apart: no collision triggers. With randomness=0 the direction
     // vector is never modified, so it must survive the tick unchanged.
-    let ant_a = Ant::new([0.5, 0.5], [0.001, 0.0], AntType::Forager);
-    let ant_b = Ant::new([0.8, 0.8], [0.001, 0.0], AntType::Forager);
+    let ant_a = Ant::new([0.5, 0.5], [0.001, 0.0], AntType::Scout);
+    let ant_b = Ant::new([0.8, 0.8], [0.001, 0.0], AntType::Scout);
     let (dir_a, dir_b) = (ant_a.direction, ant_b.direction);
     let (setup, mut sim) = make_sim(vec![ant_a, ant_b]);
 
