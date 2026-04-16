@@ -24,9 +24,10 @@ const DOT_RADIUS: f32 = 0.001;
 const COLLISION_RADIUS: f32 = 0.0001;
 const COLLISION_ANGLE_MIN: f32 = 1.169_370_6; // 67deg
 const COLLISION_ANGLE_MAX: f32 = 1.954_768_8; // 112deg
-const FORAGER_RANDOMNESS: f32 = 0.05;
-const SCOUT_RANDOMNESS: f32 = 0.4;
-const SCOUT_RATIO: f32 = 0.1;
+const FORAGER_RANDOMNESS: f32 = 0.02;
+const SCOUT_RANDOMNESS: f32 = 0.8;
+const INITIAL_SCOUT_RATIO: f32 = 0.1;
+const RATIO_STEP: f32 = 0.05;
 const SENSOR_DISTANCE: f32 = 0.03;
 const SENSOR_ANGLE: f32 = 0.524; // ~30 degrees
 
@@ -38,8 +39,10 @@ pub struct State {
     pipeline: RenderPipeline,
     is_surface_configured: bool,
     frame_count: u32,
-    fps_timer: std::time::Instant,
+    log_timer: std::time::Instant,
     current_palette: Palette,
+    current_scout_ratio: f32,
+    spawner: RandomSpawner,
 }
 
 impl State {
@@ -61,7 +64,8 @@ impl State {
             _pad: [0; 1],
         };
 
-        let spawner = RandomSpawner::new(Colony::default(), N_ANTS, SCOUT_RATIO, BASE_SPEED);
+        let spawner =
+            RandomSpawner::new(Colony::default(), N_ANTS, INITIAL_SCOUT_RATIO, BASE_SPEED);
 
         let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
@@ -87,8 +91,10 @@ impl State {
             pipeline,
             is_surface_configured: false,
             frame_count: 0,
-            fps_timer: std::time::Instant::now(),
+            log_timer: std::time::Instant::now(),
             current_palette: Palette::BoldHues,
+            current_scout_ratio: INITIAL_SCOUT_RATIO,
+            spawner,
         })
     }
 
@@ -97,6 +103,24 @@ impl State {
         let scheme = ColorScheme::from_palette(self.current_palette);
         self.pipeline
             .set_color_scheme(&self.wgpu_setup.queue, scheme);
+    }
+
+    fn adjust_scout_ratio(&mut self, delta: f32) {
+        let new_ratio = (self.current_scout_ratio + delta).clamp(0.0, 1.0);
+        if new_ratio != self.current_scout_ratio {
+            self.current_scout_ratio = new_ratio;
+            // Read current ant state from GPU (includes positions/directions)
+            let ants = self.simulation.read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+            // Update types while preserving positions/directions
+            self.spawner.ants_mut().copy_from_slice(&ants);
+            self.spawner.adjust_scout_ratio(new_ratio);
+            // Write updated ants back to GPU
+            self.wgpu_setup.queue.write_buffer(
+                &self.simulation.ant_buffer,
+                0,
+                bytemuck::cast_slice(self.spawner.ants()),
+            );
+        }
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -115,10 +139,11 @@ impl State {
     fn render(&mut self) -> anyhow::Result<()> {
         self.window.request_redraw();
         self.frame_count += 1;
-        if self.fps_timer.elapsed().as_secs_f32() >= 1.0 {
-            log::debug!("fps: {}", self.frame_count);
+        if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
+            log::debug!("fps: {}", self.frame_count,);
+            log::debug!("ratio: {:.2}", self.current_scout_ratio);
             self.frame_count = 0;
-            self.fps_timer = std::time::Instant::now();
+            self.log_timer = std::time::Instant::now();
         }
 
         if !self.is_surface_configured {
@@ -252,6 +277,8 @@ impl ApplicationHandler<State> for App {
             } => match key {
                 KeyCode::Escape => event_loop.exit(),
                 KeyCode::KeyC => state.cycle_palette(),
+                KeyCode::ArrowUp => state.adjust_scout_ratio(RATIO_STEP),
+                KeyCode::ArrowDown => state.adjust_scout_ratio(-RATIO_STEP),
                 _ => {}
             },
             _ => {}

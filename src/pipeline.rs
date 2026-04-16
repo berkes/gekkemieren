@@ -139,7 +139,9 @@ impl SimulationPipeline {
         let ant_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ant_buffer"),
             contents: bytemuck::cast_slice(ants),
-            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
         });
         let colony_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("colony_buffer"),
