@@ -39,12 +39,32 @@ struct GpuConfig {
 @group(0) @binding(3) var<uniform> grid_info: GridInfo;
 @group(0) @binding(4) var<uniform> config: GpuConfig;
 
-fn hash(v: vec2<f32>) -> f32 {
-    return fract(sin(dot(v, vec2<f32>(127.1, 311.7))) * 43758.5453);
+// Hash constants - primes used for pseudo-random number generation
+const HASH_COORD_SCALE: vec2<f32> = vec2<f32>(127.1, 311.7);
+const HASH_FINAL_SCALE: f32 = 43758.5453;
+const INDEX_OFFSET_SCALE: f32 = 0.1;
+
+// Generates pseudo-random value in [min, max) range.
+// seed.xy = position, seed.z = index (as float)
+// Uses symmetric index offset to ensure no directional bias.
+fn random(seed: vec3<f32>, min: f32, max: f32) -> f32 {
+    let pos = seed.xy;
+    let index = seed.z;
+    let index_offset = vec2<f32>(index);
+    let seed_pos = pos + index_offset * INDEX_OFFSET_SCALE;
+
+    // Mix coordinates by scaling with prime constants and wrapping
+    let mixed_coords = fract(seed_pos * HASH_COORD_SCALE);
+
+    // Combine components and wrap again to produce final [0, 1) value
+    let hash_value = fract((mixed_coords.x + mixed_coords.y) * HASH_FINAL_SCALE);
+
+    // Scale from [0, 1) to [min, max)
+    return min + hash_value * (max - min);
 }
 
 fn random_collision_angle(pos: vec2<f32>) -> f32 {
-    return config.collision_angle_min + hash(pos) * (config.collision_angle_max - config.collision_angle_min);
+    return random(vec3<f32>(pos, 1.0), config.collision_angle_min, config.collision_angle_max);
 }
 
 struct Colony {
@@ -60,17 +80,10 @@ fn in_colony(pos: vec2<f32>) -> bool {
     return d.x < colony.half_size && d.y < colony.half_size;
 }
 
-fn sample_pheromone(pos: vec2<f32>) -> f32 {
-    let clamped = clamp(pos, vec2<f32>(0.0), vec2<f32>(1.0));
-    let x = u32(clamped.x * f32(grid_info.width - 1u));
-    let y = u32(clamped.y * f32(grid_info.height - 1u));
-    return f32(atomicLoad(&pheromone_grid[y * grid_info.width + x]));
-}
-
 fn sample_pheromone_area(pos: vec2<f32>) -> f32 {
     let clamped = clamp(pos, vec2<f32>(0.0), vec2<f32>(1.0));
-    let center_x = u32(clamped.x * f32(grid_info.width - 1u));
-    let center_y = u32(clamped.y * f32(grid_info.height - 1u));
+    let center_x = clamp(u32(clamped.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
+    let center_y = clamp(u32(clamped.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
 
     var total: f32 = 0.0;
     var count: f32 = 0.0;
@@ -142,10 +155,8 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
         let dir_norm = normalize(ant.direction);
         let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
         let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
-        // let left_sample = sample_pheromone_area(left_pos);
-        // let right_sample = sample_pheromone_area(right_pos);
-        let left_sample = sample_pheromone(left_pos);
-        let right_sample = sample_pheromone(right_pos);
+        let left_sample = sample_pheromone_area(left_pos);
+        let right_sample = sample_pheromone_area(right_pos);
 
         if left_sample > right_sample {
             ant.direction = rotate(ant.direction, config.sensor_angle);
@@ -156,9 +167,9 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
     }
 
+    // Apply random direction change based on ant type
     let randomness = select(config.forager_randomness, config.scout_randomness, ant.ant_type == 1u);
-    let noise = hash(ant.position + vec2<f32>(f32(index) * 0.1, 0.0)) * 2.0 - 1.0;
-    ant.direction = rotate(ant.direction, noise * randomness);
+    ant.direction = rotate(ant.direction, random(vec3<f32>(ant.position, f32(index)), -1.0, 1.0) * randomness);
 
     ants[index] = ant;
 
