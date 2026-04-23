@@ -2,7 +2,7 @@ struct Ant {
     position: vec2<f32>,
     direction: vec2<f32>,
     ant_type: u32,
-    emerged: u32,
+    _pad: u32,
 }
 
 struct GridInfo {

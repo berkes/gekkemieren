@@ -18,8 +18,7 @@ pub struct Ant {
     pub position: [f32; 2],
     pub direction: [f32; 2],
     pub ant_type: u32,
-    /// 0 = inside colony (collision suppressed), 1 = has emerged
-    pub emerged: u32,
+    pub _pad: u32,
 }
 
 impl Ant {
@@ -28,7 +27,7 @@ impl Ant {
             position,
             direction,
             ant_type: ant_type.as_u32(),
-            emerged: 0,
+            _pad: 0,
         }
     }
 }
