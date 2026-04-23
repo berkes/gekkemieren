@@ -12,6 +12,7 @@ use winit::{
 use crate::{
     color_scheme::ColorScheme,
     config::{Config, GpuConfig},
+    food::FoodSpawner,
     pipeline::{RenderPipeline, SimulationPipeline},
     screenshot::{save_screenshot, save_state},
     spawn::{AntSpawner, Colony, RandomSpawner},
@@ -29,6 +30,7 @@ pub struct State {
     frame_count: u32,
     log_timer: std::time::Instant,
     spawner: RandomSpawner,
+    food_spawner: FoodSpawner,
 }
 
 impl State {
@@ -44,6 +46,10 @@ impl State {
             config.base_speed,
         );
 
+        // Initialize food spawner and spawn food near a random edge
+        let mut food_spawner = FoodSpawner::new(wgpu_setup.config.width, wgpu_setup.config.height);
+        food_spawner.spawn_food_circle(0.1); // Spawn a circle with radius 0.1 (10% of screen)
+
         let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
             wgpu_setup.config.width,
@@ -51,6 +57,13 @@ impl State {
             gpu_config,
             spawner.colony(),
             spawner.ants(),
+        );
+
+        // Upload initial food data to GPU buffer
+        wgpu_setup.queue.write_buffer(
+            &simulation.food_buffer,
+            0,
+            bytemuck::cast_slice(&food_spawner.food_grid.data),
         );
 
         let color_scheme = ColorScheme::from_palette(config.palette);
@@ -72,6 +85,7 @@ impl State {
             log_timer: std::time::Instant::now(),
 
             spawner,
+            food_spawner,
         })
     }
 
@@ -108,6 +122,14 @@ impl State {
             &self.wgpu_setup.queue,
             width,
             height,
+        );
+        // Update food spawner's grid size and re-upload data
+        self.food_spawner.food_grid = crate::food::FoodGrid::new(width, height);
+        self.food_spawner.spawn_food_circle(0.1);
+        self.wgpu_setup.queue.write_buffer(
+            &self.simulation.food_buffer,
+            0,
+            bytemuck::cast_slice(&self.food_spawner.food_grid.data),
         );
         self.pipeline
             .on_resize(&self.wgpu_setup.device, &self.simulation);

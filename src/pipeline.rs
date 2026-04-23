@@ -17,6 +17,15 @@ fn create_pheromone_buffer(device: &wgpu::Device, width: u32, height: u32) -> wg
     })
 }
 
+fn create_food_buffer(device: &wgpu::Device, width: u32, height: u32) -> wgpu::Buffer {
+    let data = vec![0u32; (width * height) as usize];
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("food_buffer"),
+        contents: bytemuck::cast_slice(&data),
+        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+    })
+}
+
 fn create_compute_bind_group(
     device: &wgpu::Device,
     pipeline: &wgpu::ComputePipeline,
@@ -130,6 +139,33 @@ fn create_hud_bind_group(
     })
 }
 
+fn create_food_render_bind_group(
+    device: &wgpu::Device,
+    pipeline: &wgpu::RenderPipeline,
+    food_buffer: &wgpu::Buffer,
+    grid_info_buffer: &wgpu::Buffer,
+    color_scheme_buffer: &wgpu::Buffer,
+) -> wgpu::BindGroup {
+    device.create_bind_group(&wgpu::BindGroupDescriptor {
+        label: Some("food_render_bind_group"),
+        layout: &pipeline.get_bind_group_layout(0),
+        entries: &[
+            wgpu::BindGroupEntry {
+                binding: 0,
+                resource: food_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: grid_info_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 2,
+                resource: color_scheme_buffer.as_entire_binding(),
+            },
+        ],
+    })
+}
+
 // ── SimulationPipeline ────────────────────────────────────────────────────────
 
 /// Compute pipelines and simulation state buffers.
@@ -145,6 +181,7 @@ pub struct SimulationPipeline {
 
     pub ant_buffer: wgpu::Buffer,
     pub pheromone_buffer: wgpu::Buffer,
+    pub food_buffer: wgpu::Buffer,
     pub grid_info_buffer: wgpu::Buffer,
     pub config_buffer: wgpu::Buffer,
 
@@ -187,6 +224,7 @@ impl SimulationPipeline {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let pheromone_buffer = create_pheromone_buffer(device, width, height);
+        let food_buffer = create_food_buffer(device, width, height);
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
             contents: bytemuck::bytes_of(&config),
@@ -267,6 +305,7 @@ impl SimulationPipeline {
             pheromone_decay_bind_group,
             ant_buffer,
             pheromone_buffer,
+            food_buffer,
             grid_info_buffer,
             config_buffer,
             ant_count,
@@ -316,6 +355,7 @@ impl SimulationPipeline {
         queue.write_buffer(&self.grid_info_buffer, 0, bytemuck::bytes_of(&grid_info));
 
         self.pheromone_buffer = create_pheromone_buffer(device, width, height);
+        self.food_buffer = create_food_buffer(device, width, height);
         self.compute_bind_group = create_compute_bind_group(
             device,
             &self.compute_pipeline,
@@ -403,6 +443,8 @@ pub struct RenderPipeline {
     render_bind_group: wgpu::BindGroup,
     pheromone_render_pipeline: wgpu::RenderPipeline,
     pheromone_render_bind_group: wgpu::BindGroup,
+    food_render_pipeline: wgpu::RenderPipeline,
+    food_render_bind_group: wgpu::BindGroup,
     hud_pipeline: wgpu::RenderPipeline,
     hud_bind_group: wgpu::BindGroup,
     color_scheme_buffer: wgpu::Buffer,
@@ -512,6 +554,46 @@ impl RenderPipeline {
             &color_scheme_buffer,
         );
 
+        // Food Render Pipeline
+        let food_render_shader =
+            device.create_shader_module(wgpu::include_wgsl!("shaders/food_render.wgsl"));
+        let food_render_pipeline =
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("food_render_pipeline"),
+                layout: None,
+                vertex: wgpu::VertexState {
+                    module: &food_render_shader,
+                    entry_point: Some("vs_main"),
+                    buffers: &[],
+                    compilation_options: Default::default(),
+                },
+                fragment: Some(wgpu::FragmentState {
+                    module: &food_render_shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: texture_format,
+                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: Default::default(),
+                }),
+                primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList,
+                    ..Default::default()
+                },
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                multiview_mask: None,
+                cache: None,
+            });
+        let food_render_bind_group = create_food_render_bind_group(
+            device,
+            &food_render_pipeline,
+            &simulation.food_buffer,
+            &simulation.grid_info_buffer,
+            &color_scheme_buffer,
+        );
+
         // HUD Pipeline - renders scout_ratio bar
         let hud_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/hud.wgsl"));
         let hud_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -555,6 +637,8 @@ impl RenderPipeline {
             render_bind_group,
             pheromone_render_pipeline,
             pheromone_render_bind_group,
+            food_render_pipeline,
+            food_render_bind_group,
             hud_pipeline,
             hud_bind_group,
             color_scheme_buffer,
@@ -583,6 +667,13 @@ impl RenderPipeline {
             &simulation.config_buffer,
             &self.color_scheme_buffer,
         );
+        self.food_render_bind_group = create_food_render_bind_group(
+            device,
+            &self.food_render_pipeline,
+            &simulation.food_buffer,
+            &simulation.grid_info_buffer,
+            &self.color_scheme_buffer,
+        );
         self.hud_bind_group = create_hud_bind_group(
             device,
             &self.hud_pipeline,
@@ -593,10 +684,17 @@ impl RenderPipeline {
     }
 
     pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>, ant_count: u32) {
+        // Render pheromones first
         render_pass.set_pipeline(&self.pheromone_render_pipeline);
         render_pass.set_bind_group(0, &self.pheromone_render_bind_group, &[]);
         render_pass.draw(0..6, 0..1);
 
+        // Render food on top of pheromones
+        render_pass.set_pipeline(&self.food_render_pipeline);
+        render_pass.set_bind_group(0, &self.food_render_bind_group, &[]);
+        render_pass.draw(0..6, 0..1);
+
+        // Render ants on top
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
         render_pass.draw(0..1, 0..ant_count);

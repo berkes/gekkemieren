@@ -34,6 +34,7 @@ struct ColorScheme {
     forager:    vec4<f32>,
     scout:      vec4<f32>,
     pheromone:  vec4<f32>,
+    food:       vec4<f32>,
 }
 
 @group(0) @binding(0) var<uniform> grid_info: GridInfo;
