@@ -1,11 +1,11 @@
 # Ant Simulation Configuration
 
 # Pheromone decay settings
-decay_amount = 1        # Amount to decay each tick
-max_strength = 1000     # Maximum pheromone strength
+decay_amount = 1       # Amount to decay each tick
+max_strength = 500     # Maximum pheromone strength
 
 # Pheromone deposit settings
-deposit_amount = 200    # Amount of pheromone deposited per ant per tick
+deposit_amount = 50    # Amount of pheromone deposited per ant per tick
 
 # Visual settings
 dot_radius = 0.001      # Radius of pheromone dots in render
@@ -31,9 +31,15 @@ base_speed = 0.0015       # Base movement speed of ants
 scout_ratio = 0.2       # Initial ratio of scout ants (0.0 to 1.0)
 ratio_step = 0.05        # Step size for adjusting ratio with arrow keys
 
-# Window settings
-window_width = 1980      # Initial window width in pixels
-window_height = 1200     # Initial window height in pixels
+# Window settings in pixels
+# window_width = 1980
+# window_height = 1200
+## Instagram Reel size three thirds
+# window_width = 1080
+# window_height = 1920
+## Large square
+window_width = 1200
+window_height = 1200
 
-# Color palette (boldhues, warmearth, oceansunsetvibes)
+# Color palette (boldhues, warmearth, oceansunsetvibes, disco3, debug)
 palette = "boldhues"

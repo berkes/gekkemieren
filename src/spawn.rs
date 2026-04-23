@@ -84,7 +84,7 @@ impl Colony {
 
 impl Default for Colony {
     fn default() -> Self {
-        Self::new([0.2, 0.2], 0.1)
+        Self::new([0.5, 0.5], 0.01)
     }
 }
 
