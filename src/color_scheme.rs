@@ -15,7 +15,8 @@ pub enum Palette {
     BoldHues,
     WarmEarth,
     OceanSunsetVibes,
-    Debug
+    Disco3,
+    Debug,
 }
 
 impl ColorScheme {
@@ -39,15 +40,22 @@ impl ColorScheme {
             Palette::OceanSunsetVibes => Self {
                 // https://coolors.co/palette/26547c-ef476f-ffd166-06d6a0
                 background: [0.149, 0.325, 0.478, 1.0], // #26547C Dusk Blue background
-                pheromone: [0.988, 0.824, 0.412, 1.0],     // #FFD166 Royal Gold
-                scout: [0.922, 0.298, 0.443, 1.0],   // #EF476F Bubblegum Pink
-                forager: [0.027, 0.851, 0.635, 1.0], // #06D6A0 Emerald
+                pheromone: [0.988, 0.824, 0.412, 1.0],  // #FFD166 Royal Gold
+                scout: [0.922, 0.298, 0.443, 1.0],      // #EF476F Bubblegum Pink
+                forager: [0.027, 0.851, 0.635, 1.0],    // #06D6A0 Emerald
             },
             Palette::Debug => Self {
                 background: [1.0, 1.0, 1.0, 1.0],
                 forager: [0.0, 0.0, 0.0, 1.0],
-                scout: [0.0, 0.0, 1.0, 1.0],
+                scout: [0.0, 0.0, 0.0, 1.0],
                 pheromone: [0.0, 1.0, 0.0, 1.0],
+            },
+            Palette::Disco3 => Self {
+                // https://coolors.co/palette/f72585-7209b7-3a0ca3
+                scout: [0.961, 0.133, 0.557, 1.0],   // #f72585
+                forager: [0.961, 0.133, 0.557, 1.0], // #f72585
+                pheromone: [0.439, 0.035, 0.498, 1.0],   // #7209b7
+                background: [0.235, 0.063, 0.588, 1.0], // #3A0CA3
             },
         }
     }
