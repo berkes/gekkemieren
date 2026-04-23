@@ -108,19 +108,23 @@ impl FoodSpawner {
         let edge: u32 = (rng.random::<f32>() * 4.0).floor() as u32;
 
         let center = match edge {
-            0 => { // Top edge
+            0 => {
+                // Top edge
                 let x: f32 = rng.random::<f32>();
                 [x, radius + 0.01] // Slightly offset from edge
             }
-            1 => { // Right edge
+            1 => {
+                // Right edge
                 let y: f32 = rng.random::<f32>();
                 [1.0 - radius - 0.01, y]
             }
-            2 => { // Bottom edge
+            2 => {
+                // Bottom edge
                 let x: f32 = rng.random::<f32>();
                 [x, 1.0 - radius - 0.01]
             }
-            3 => { // Left edge
+            3 => {
+                // Left edge
                 let y: f32 = rng.random::<f32>();
                 [radius + 0.01, y]
             }

@@ -1,6 +1,6 @@
+use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::Arc;
-use anyhow::{Context, Result};
 use winit::{
     application::ApplicationHandler,
     event::*,
@@ -94,7 +94,9 @@ impl State {
         if new_ratio != self.config.scout_ratio {
             self.config.scout_ratio = new_ratio;
             // Read current ant state from GPU (includes positions/directions)
-            let ants = self.simulation.read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+            let ants = self
+                .simulation
+                .read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
             // Update types while preserving positions/directions
             self.spawner.ants_mut().copy_from_slice(&ants);
             self.spawner.adjust_scout_ratio(new_ratio);
@@ -104,7 +106,7 @@ impl State {
                 0,
                 bytemuck::cast_slice(self.spawner.ants()),
             );
-            
+
             // Update GPU config buffer with new scout ratio
             let gpu_config = GpuConfig::from(&self.config);
             self.wgpu_setup.queue.write_buffer(
@@ -216,7 +218,6 @@ impl State {
 
         Ok(())
     }
-
 }
 
 impl State {
@@ -254,8 +255,10 @@ impl State {
                     timestamp_writes: None,
                     multiview_mask: None,
                 });
-                self.simulation.update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
-                self.pipeline.draw(&mut render_pass, self.simulation.ant_count as u32);
+                self.simulation
+                    .update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+                self.pipeline
+                    .draw(&mut render_pass, self.simulation.ant_count as u32);
             },
         )?;
 
@@ -288,9 +291,7 @@ impl ApplicationHandler<State> for App {
             )));
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
-        self.state = Some(
-            pollster::block_on(State::new(window, self.config.clone())).unwrap(),
-        );
+        self.state = Some(pollster::block_on(State::new(window, self.config.clone())).unwrap());
     }
 
     fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: State) {
@@ -355,8 +356,12 @@ pub fn run() -> anyhow::Result<()> {
     };
 
     // Load configuration from file
-    let config = Config::from_file(&config_path)
-        .with_context(|| format!("Failed to load configuration from: {}", config_path.display()))?;
+    let config = Config::from_file(&config_path).with_context(|| {
+        format!(
+            "Failed to load configuration from: {}",
+            config_path.display()
+        )
+    })?;
 
     let event_loop = EventLoop::with_user_event().build()?;
     let mut app = App::new(config);

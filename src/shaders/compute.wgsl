@@ -2,7 +2,7 @@ struct Ant {
     position: vec2<f32>,
     direction: vec2<f32>,
     ant_type: u32,
-    _pad: u32,
+    carries_food: u32,
 }
 
 struct GridInfo {
@@ -16,6 +16,7 @@ struct GpuConfig {
     decay_amount: u32,
     max_strength: u32,
     deposit_amount: u32,
+    deposit_amount_carrying_food: u32,
     dot_radius: f32,
     collision_radius: f32,
     collision_angle_min: f32,
@@ -28,6 +29,7 @@ struct GpuConfig {
     base_speed: f32,
     scout_ratio: f32,
     ratio_step: f32,
+    homing_strength: f32,
     window_width: u32,
     window_height: u32,
     _pad1: u32,
@@ -38,6 +40,7 @@ struct GpuConfig {
 @group(0) @binding(2) var<storage, read_write> pheromone_grid: array<atomic<u32>>;
 @group(0) @binding(3) var<uniform> grid_info: GridInfo;
 @group(0) @binding(4) var<uniform> config: GpuConfig;
+@group(0) @binding(5) var<storage, read_write> food_grid: array<atomic<u32>>;
 
 // Hash constants - primes used for pseudo-random number generation
 const HASH_COORD_SCALE: vec2<f32> = vec2<f32>(127.1, 311.7);
@@ -110,6 +113,26 @@ fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {
     return vec2<f32>(c * v.x - s * v.y, s * v.x + c * v.y);
 }
 
+/// Compute steering direction for ants carrying food to head toward colony.
+/// Returns the direction with homing angle applied, or the original direction if in colony.
+fn apply_homing(direction: vec2<f32>, position: vec2<f32>, strength: f32) -> vec2<f32> {
+    if in_colony(position) {
+        return direction;
+    }
+    let to_colony = colony.center - position;
+    let len_sq = dot(to_colony, to_colony);
+    if (len_sq <= 0.000001) {
+        return direction;
+    }
+    let current_angle = atan2(direction.y, direction.x);
+    let target_angle = atan2(to_colony.y, to_colony.x);
+    let angle_diff = target_angle - current_angle;
+    // Normalize angle difference to [-pi, pi] range
+    let pi = 3.141592653589793;
+    let angle_diff_norm = angle_diff - 2.0 * pi * floor((angle_diff + pi) / (2.0 * pi));
+    return rotate(direction, angle_diff_norm * strength);
+}
+
 @compute
 @workgroup_size(64)
 fn collision_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -150,8 +173,18 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
 
-    // Pheromone following for foragers only
-    if ant.ant_type == 0u {
+    // Food drop logic: drop food when entering colony
+    if ant.carries_food == 1u && in_colony(ant.position) {
+        ant.carries_food = 0u;
+    }
+
+    // If ant carries food, apply homing toward colony
+    if ant.carries_food == 1u {
+        ant.direction = apply_homing(ant.direction, ant.position, config.homing_strength);
+    }
+
+    // Pheromone following for foragers and ants carrying food
+    if ant.ant_type == 0u || ant.carries_food == 1u {
         let dir_norm = normalize(ant.direction);
         let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
         let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
@@ -162,8 +195,9 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
             ant.direction = rotate(ant.direction, config.sensor_angle);
         } else if right_sample > left_sample {
             ant.direction = rotate(ant.direction, -config.sensor_angle);
-        } else if left_sample == 0.0 && right_sample == 0.0 {
-            ant.direction = rotate(ant.direction, 3.141592653589793);
+        } else if left_sample == 0.0 && right_sample == 0.0 && ant.ant_type == 0u {
+            // followers bactrack, they never venture into unknown
+            // ant.direction = apply_homing(ant.direction, ant.position, 0.05);
         }
     }
 
@@ -171,9 +205,24 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let randomness = select(config.forager_randomness, config.scout_randomness, ant.ant_type == 1u);
     ant.direction = rotate(ant.direction, random(vec3<f32>(ant.position, f32(index)), -1.0, 1.0) * randomness);
 
+    // Food pickup logic: only pick up food if not already carrying
+    if ant.carries_food == 0u {
+        let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
+        let cell_y = clamp(u32(ant.position.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
+        let food_idx = cell_y * grid_info.width + cell_x;
+
+        // Try to pick up food - use atomic exchange to get and set in one operation
+        // If the food cell was 1, we pick it up (set to 0) and the ant now carries food
+        let prev_food = atomicExchange(&food_grid[food_idx], 0u);
+        if prev_food == 1u {
+            ant.carries_food = 1u;
+        }
+    }
+
     ants[index] = ant;
 
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
     let cell_y = clamp(u32(ant.position.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
-    atomicAdd(&pheromone_grid[cell_y * grid_info.width + cell_x], config.deposit_amount);
+    let deposit = select(config.deposit_amount, config.deposit_amount_carrying_food, ant.carries_food == 1u);
+    atomicAdd(&pheromone_grid[cell_y * grid_info.width + cell_x], deposit);
 }

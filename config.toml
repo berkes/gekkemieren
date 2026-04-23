@@ -2,10 +2,11 @@
 
 # Pheromone decay settings
 decay_amount = 1       # Amount to decay each tick
-max_strength = 500     # Maximum pheromone strength
+max_strength = 1000     # Maximum pheromone strength
 
 # Pheromone deposit settings
-deposit_amount = 50    # Amount of pheromone deposited per ant per tick
+deposit_amount = 5                 # Amount of pheromone deposited per ant per tick
+deposit_amount_carrying_food = 100  # Amount of pheromone deposited when carrying food
 
 # Visual settings
 dot_radius = 0.001      # Radius of pheromone dots in render
@@ -24,8 +25,9 @@ sensor_distance = 0.006   # Distance from ant to sense pheromones
 sensor_angle = 0.524      # ~30 degrees - angle offset for sensors
 
 # Population settings
-n_ants = 15000            # Number of ants in the simulation
-base_speed = 0.0015       # Base movement speed of ants
+n_ants = 15000                           # Number of ants in the simulation
+base_speed = 0.0015                      # Base movement speed of ants
+homing_strength = 0.1   # Steering strength toward colony when carrying food (0.0 to ~1.0)
 
 # Scout/forager ratio
 scout_ratio = 0.2       # Initial ratio of scout ants (0.0 to 1.0)
@@ -42,4 +44,4 @@ window_width = 1200
 window_height = 1200
 
 # Color palette (boldhues, warmearth, oceansunsetvibes, disco3, debug)
-palette = "boldhues"
+palette = "oceansunsetvibes"

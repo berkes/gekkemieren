@@ -15,6 +15,7 @@ fn config() -> Config {
         decay_amount: 1,
         max_strength: 1000,
         deposit_amount: 50,
+        deposit_amount_carrying_food: 100,
         dot_radius: 0.001,
         collision_radius: COLLISION_RADIUS,
         collision_angle_min: 1.169_370_6,
@@ -25,10 +26,11 @@ fn config() -> Config {
         scout_randomness: 0.0,
         sensor_distance: 0.03,
         sensor_angle: 0.5,
-        n_ants: 0, // not used in test
-        base_speed: 0.0, // not used in test
+        n_ants: 0,        // not used in test
+        base_speed: 0.0,  // not used in test
         scout_ratio: 0.0, // not used in test
-        ratio_step: 0.0, // not used in test
+        ratio_step: 0.0,  // not used in test
+        homing_strength: 0.1,
         window_width: 64, // test grid size
         window_height: 64,
         palette: Palette::BoldHues,

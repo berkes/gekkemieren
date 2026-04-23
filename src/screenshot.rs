@@ -124,12 +124,12 @@ pub fn save_screenshot(
     // Encode and save PNG
     let buffer_slice = output_buffer.slice(..);
     let mapping = buffer_slice.get_mapped_range();
-    
+
     // Remove padding: copy from aligned buffer to tightly-packed vector for PNG
     // Each row in buffer has bytes_per_row_aligned bytes, but we only need bytes_per_row
     let tight_data_size = width * height * 4;
     let mut tight_data = vec![0u8; tight_data_size as usize];
-    
+
     for row in 0..height as usize {
         let src_start = row * bytes_per_row_aligned as usize;
         let src_end = src_start + bytes_per_row as usize;

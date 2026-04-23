@@ -30,9 +30,11 @@ fn create_compute_bind_group(
     device: &wgpu::Device,
     pipeline: &wgpu::ComputePipeline,
     ant_buffer: &wgpu::Buffer,
+    colony_buffer: &wgpu::Buffer,
     pheromone_buffer: &wgpu::Buffer,
     grid_info_buffer: &wgpu::Buffer,
     config_buffer: &wgpu::Buffer,
+    food_buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("compute_bind_group"),
@@ -41,6 +43,10 @@ fn create_compute_bind_group(
             wgpu::BindGroupEntry {
                 binding: 0,
                 resource: ant_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 1,
+                resource: colony_buffer.as_entire_binding(),
             },
             wgpu::BindGroupEntry {
                 binding: 2,
@@ -53,6 +59,10 @@ fn create_compute_bind_group(
             wgpu::BindGroupEntry {
                 binding: 4,
                 resource: config_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 5,
+                resource: food_buffer.as_entire_binding(),
             },
         ],
     })
@@ -180,6 +190,7 @@ pub struct SimulationPipeline {
     pheromone_decay_bind_group: wgpu::BindGroup,
 
     pub ant_buffer: wgpu::Buffer,
+    pub colony_buffer: wgpu::Buffer,
     pub pheromone_buffer: wgpu::Buffer,
     pub food_buffer: wgpu::Buffer,
     pub grid_info_buffer: wgpu::Buffer,
@@ -273,9 +284,11 @@ impl SimulationPipeline {
             device,
             &compute_pipeline,
             &ant_buffer,
+            &colony_buffer,
             &pheromone_buffer,
             &grid_info_buffer,
             &config_buffer,
+            &food_buffer,
         );
 
         let pheromone_decay_shader =
@@ -304,6 +317,7 @@ impl SimulationPipeline {
             pheromone_decay_pipeline,
             pheromone_decay_bind_group,
             ant_buffer,
+            colony_buffer,
             pheromone_buffer,
             food_buffer,
             grid_info_buffer,
@@ -360,9 +374,11 @@ impl SimulationPipeline {
             device,
             &self.compute_pipeline,
             &self.ant_buffer,
+            &self.colony_buffer,
             &self.pheromone_buffer,
             &self.grid_info_buffer,
             &self.config_buffer,
+            &self.food_buffer,
         );
         self.pheromone_decay_bind_group = create_pheromone_decay_bind_group(
             device,
@@ -557,35 +573,34 @@ impl RenderPipeline {
         // Food Render Pipeline
         let food_render_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/food_render.wgsl"));
-        let food_render_pipeline =
-            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("food_render_pipeline"),
-                layout: None,
-                vertex: wgpu::VertexState {
-                    module: &food_render_shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[],
-                    compilation_options: Default::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &food_render_shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: texture_format,
-                        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: Default::default(),
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList,
-                    ..Default::default()
-                },
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            });
+        let food_render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("food_render_pipeline"),
+            layout: None,
+            vertex: wgpu::VertexState {
+                module: &food_render_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &food_render_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: texture_format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
         let food_render_bind_group = create_food_render_bind_group(
             device,
             &food_render_pipeline,
