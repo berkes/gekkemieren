@@ -22,10 +22,12 @@ find and retrieve food and avoid obstructions.
 
 - **App** (`src/app.rs`): Main application state and event loop using winit/ApplicationHandler
 - **GPU setup** (`src/wgpu_setup.rs`): Boilerplate for WGPU
-- **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup. Uses shaders under `src/shaders`.
+- **Rendering** (`src/pipeline.rs`): Pipeline and buffer setup. Uses shaders under `src/shaders`
 - **Ant -or agent-** (`src/ant.rs`): Agent behaviour
 - **Docs** (`docs`): Markdown documentation with handpicked example screenshots
-- **Saves** (`src/screenshot.rs` and `saves/*`): Saves of screenshots with their corresponding config as JSON. NEVER delete saves!
+- **Config** (`src/config.rs`): Configuration loading and parsing
+- **ColorScheme** (`src/color_scheme.rs`): Handpicked color schemes. Can be used in config
+- **Saves** (`src/screenshot.rs` and `saves/*`): Saves of screenshots with their corresponding config as JSON. NEVER delete saves images or jsons!
 
 ## Development Notes
 
