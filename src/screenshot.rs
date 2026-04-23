@@ -46,9 +46,13 @@ pub fn save_screenshot(
     let height = config.height;
     let format = config.format;
 
-    let output_buffer_size = (width * height * 4) as usize;
+    // Calculate aligned bytes per row for wgpu copy requirements
+    let bytes_per_row = 4 * width;
+    let alignment = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
+    let bytes_per_row_aligned = (bytes_per_row + alignment - 1) / alignment * alignment;
+    let output_buffer_size = (bytes_per_row_aligned * height) as usize;
 
-    // Create output buffer
+    // Create output buffer with space for aligned rows (padding)
     let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Screenshot Output Buffer"),
         size: output_buffer_size as u64,
@@ -82,7 +86,7 @@ pub fn save_screenshot(
 
     render_callback(&mut encoder, &screenshot_view);
 
-    // Copy texture to buffer
+    // Copy texture to buffer with aligned byte stride
     encoder.copy_texture_to_buffer(
         wgpu::TexelCopyTextureInfo {
             texture: &screenshot_texture,
@@ -94,7 +98,7 @@ pub fn save_screenshot(
             buffer: &output_buffer,
             layout: wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(4 * width),
+                bytes_per_row: Some(bytes_per_row_aligned),
                 rows_per_image: None,
             },
         },
@@ -120,13 +124,25 @@ pub fn save_screenshot(
     // Encode and save PNG
     let buffer_slice = output_buffer.slice(..);
     let mapping = buffer_slice.get_mapped_range();
-    let data = &mapping[0..output_buffer_size];
+    
+    // Remove padding: copy from aligned buffer to tightly-packed vector for PNG
+    // Each row in buffer has bytes_per_row_aligned bytes, but we only need bytes_per_row
+    let tight_data_size = width * height * 4;
+    let mut tight_data = vec![0u8; tight_data_size as usize];
+    
+    for row in 0..height as usize {
+        let src_start = row * bytes_per_row_aligned as usize;
+        let src_end = src_start + bytes_per_row as usize;
+        let dst_start = row * bytes_per_row as usize;
+        let dst_end = dst_start + bytes_per_row as usize;
+        tight_data[dst_start..dst_end].copy_from_slice(&mapping[src_start..src_end]);
+    }
 
     let mut png_encoder = Encoder::new(File::create(path)?, width, height);
     png_encoder.set_color(ColorType::Rgba);
     png_encoder.set_depth(BitDepth::Eight);
     let mut writer = png_encoder.write_header()?;
-    writer.write_image_data(data)?;
+    writer.write_image_data(&tight_data)?;
 
     Ok(())
 }
