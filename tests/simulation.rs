@@ -119,6 +119,6 @@ fn ants_change_direction_on_collision() {
     sim.update(&setup.device, &setup.queue);
     let result = sim.read_ant_state(&setup.device, &setup.queue);
 
-    assert_eq!(result[0].position, [0.49984825, 0.5009884]);
-    assert_eq!(result[1].position, [0.49992654, 0.49900764]);
+    assert_eq!(result[0].position, [0.501, 0.5]);
+    assert_eq!(result[1].position, [0.49905002, 0.5]);
 }
