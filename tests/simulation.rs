@@ -31,6 +31,7 @@ fn config() -> Config {
         scout_ratio: 0.0, // not used in test
         ratio_step: 0.0,  // not used in test
         homing_strength: 0.1,
+        food_source_radius: 0.001,
         window_width: 64, // test grid size
         window_height: 64,
         palette: Palette::BoldHues,

@@ -48,7 +48,7 @@ impl State {
 
         // Initialize food spawner and spawn food near a random edge
         let mut food_spawner = FoodSpawner::new(wgpu_setup.config.width, wgpu_setup.config.height);
-        food_spawner.spawn_food_circle(0.1); // Spawn a circle with radius 0.1 (10% of screen)
+        food_spawner.spawn_food_circle(config.food_source_radius); // Spawn a circle with radius 0.01 (1% of screen)
 
         let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
@@ -127,7 +127,7 @@ impl State {
         );
         // Update food spawner's grid size and re-upload data
         self.food_spawner.food_grid = crate::food::FoodGrid::new(width, height);
-        self.food_spawner.spawn_food_circle(0.1);
+        self.food_spawner.spawn_food_circle(self.config.food_source_radius);
         self.wgpu_setup.queue.write_buffer(
             &self.simulation.food_buffer,
             0,

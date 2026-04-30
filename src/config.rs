@@ -35,6 +35,7 @@ pub struct Config {
     pub scout_ratio: f32,
     pub ratio_step: f32,
     pub homing_strength: f32,
+    pub food_source_radius: f32,
     pub window_width: u32,
     pub window_height: u32,
     pub palette: Palette,
@@ -75,10 +76,10 @@ pub struct GpuConfig {
     pub scout_ratio: f32,
     pub ratio_step: f32,
     pub homing_strength: f32,
+    pub food_source_radius: f32,
     // Window and UI settings (not used by GPU shaders but included for simplicity)
     pub window_width: u32,
     pub window_height: u32,
-    pub _pad1: u32,
     pub _pad2: u32,
 }
 
@@ -102,9 +103,9 @@ impl From<&Config> for GpuConfig {
             scout_ratio: config.scout_ratio,
             ratio_step: config.ratio_step,
             homing_strength: config.homing_strength,
+            food_source_radius: config.food_source_radius,
             window_width: config.window_width,
             window_height: config.window_height,
-            _pad1: 0,
             _pad2: 0,
         }
     }
