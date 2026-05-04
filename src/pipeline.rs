@@ -6,15 +6,13 @@ use crate::config::GpuConfig;
 use crate::pheromone::GridInfo;
 use crate::spawn::Colony;
 
-// ── helpers shared by both pipeline types ────────────────────────────────────
-
 fn create_pheromone_buffer(
     device: &wgpu::Device,
     width: u32,
     height: u32,
     label: &str,
 ) -> wgpu::Buffer {
-    let data = vec![0u32; (width * height) as usize];
+    let data = vec![0f32; (width * height) as usize];
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some(label),
         contents: bytemuck::cast_slice(&data),
@@ -111,7 +109,6 @@ fn create_pheromone_render_bind_group(
     homing_pheromone_buffer: &wgpu::Buffer,
     food_pheromone_buffer: &wgpu::Buffer,
     grid_info_buffer: &wgpu::Buffer,
-    config_buffer: &wgpu::Buffer,
     color_scheme_buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -132,10 +129,6 @@ fn create_pheromone_render_bind_group(
             },
             wgpu::BindGroupEntry {
                 binding: 3,
-                resource: config_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 4,
                 resource: color_scheme_buffer.as_entire_binding(),
             },
         ],
@@ -566,7 +559,6 @@ impl RenderPipeline {
             &simulation.homing_pheromone_buffer,
             &simulation.food_pheromone_buffer,
             &simulation.grid_info_buffer,
-            &simulation.config_buffer,
             &color_scheme_buffer,
         );
 
@@ -680,7 +672,6 @@ impl RenderPipeline {
             &simulation.homing_pheromone_buffer,
             &simulation.food_pheromone_buffer,
             &simulation.grid_info_buffer,
-            &simulation.config_buffer,
             &self.color_scheme_buffer,
         );
         self.food_render_bind_group = create_food_render_bind_group(

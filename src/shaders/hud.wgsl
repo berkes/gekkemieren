@@ -8,9 +8,8 @@ struct GridInfo {
 }
 
 struct GpuConfig {
-    decay_amount: u32,
-    max_strength: u32,
-    deposit_amount: u32,
+    decay_ratio: f32,
+    deposit_ratio: f32,
     forager_randomness: f32,
     scout_randomness: f32,
     sensor_distance: f32,

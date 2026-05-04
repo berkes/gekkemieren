@@ -32,9 +32,6 @@ fn vs_main(@builtin(instance_index) instance: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // if in.carries_food == 1u {
-    //     return colors.food;
-    // }
     if in.ant_type == 1u {
         return colors.scout;
     }

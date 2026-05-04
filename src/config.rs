@@ -18,9 +18,8 @@ use crate::color_scheme::Palette;
 /// All fields are required and must be present in the config file.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
-    pub decay_amount: u32,
-    pub max_strength: u32,
-    pub deposit_amount: u32,
+    pub decay_ratio: f32,
+    pub deposit_ratio: f32,
     pub forager_randomness: f32,
     pub scout_randomness: f32,
     pub sensor_distance: f32,
@@ -53,9 +52,8 @@ impl Config {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Pod, Zeroable, Serialize)]
 pub struct GpuConfig {
-    pub decay_amount: u32,
-    pub max_strength: u32,
-    pub deposit_amount: u32,
+    pub decay_ratio: f32,
+    pub deposit_ratio: f32,
     pub forager_randomness: f32,
     pub scout_randomness: f32,
     pub sensor_distance: f32,
@@ -73,9 +71,8 @@ pub struct GpuConfig {
 impl From<&Config> for GpuConfig {
     fn from(config: &Config) -> Self {
         Self {
-            decay_amount: config.decay_amount,
-            max_strength: config.max_strength,
-            deposit_amount: config.deposit_amount,
+            decay_ratio: config.decay_ratio,
+            deposit_ratio: config.deposit_ratio,
             forager_randomness: config.forager_randomness,
             scout_randomness: config.scout_randomness,
             sensor_distance: config.sensor_distance,

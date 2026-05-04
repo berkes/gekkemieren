@@ -10,9 +10,8 @@ use gekkemieren::{
 
 fn config() -> Config {
     Config {
-        decay_amount: 1,
-        max_strength: 1000,
-        deposit_amount: 50,
+        decay_ratio: 0.1,
+        deposit_ratio: 0.001,
         // Zero randomness makes movement fully deterministic: direction is
         forager_randomness: 0.0,
         scout_randomness: 0.0,
