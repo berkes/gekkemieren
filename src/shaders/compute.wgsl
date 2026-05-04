@@ -17,9 +17,6 @@ struct GpuConfig {
     max_strength: u32,
     deposit_amount: u32,
     dot_radius: f32,
-    collision_radius: f32,
-    collision_angle_min: f32,
-    collision_angle_max: f32,
     forager_randomness: f32,
     scout_randomness: f32,
     sensor_distance: f32,
@@ -62,10 +59,6 @@ fn random(seed: vec3<f32>, min: f32, max: f32) -> f32 {
 
     // Scale from [0, 1) to [min, max)
     return min + hash_value * (max - min);
-}
-
-fn random_collision_angle(pos: vec2<f32>) -> f32 {
-    return random(vec3<f32>(pos, 1.0), config.collision_angle_min, config.collision_angle_max);
 }
 
 struct Colony {
@@ -117,33 +110,6 @@ fn rotate(v: vec2<f32>, angle: f32) -> vec2<f32> {
     let c = cos(angle);
     let s = sin(angle);
     return vec2<f32>(c * v.x - s * v.y, s * v.x + c * v.y);
-}
-
-
-
-@compute
-@workgroup_size(64)
-fn collision_main(@builtin(global_invocation_id) id: vec3<u32>) {
-    let index = id.x;
-    let count = arrayLength(&ants);
-    if index >= count {
-        return;
-    }
-
-    let ant = ants[index];
-    let pos = ant.position;
-
-    if in_colony(pos) {
-        return;
-    }
-
-    for (var i: u32 = 0u; i < count; i++) {
-        if i == index { continue; }
-        if distance(pos, ants[i].position) < config.collision_radius {
-            ants[index].direction = rotate(ant.direction, random_collision_angle(pos));
-            break;
-        }
-    }
 }
 
 @compute

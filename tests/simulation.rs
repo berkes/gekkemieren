@@ -8,19 +8,13 @@ use gekkemieren::{
     spawn::{AntSpawner, Colony, FixedSpawner},
 };
 
-const COLLISION_RADIUS: f32 = 0.0001;
-
 fn config() -> Config {
     Config {
         decay_amount: 1,
         max_strength: 1000,
         deposit_amount: 50,
         dot_radius: 0.001,
-        collision_radius: COLLISION_RADIUS,
-        collision_angle_min: 1.169_370_6,
-        collision_angle_max: 1.954_768_8,
         // Zero randomness makes movement fully deterministic: direction is
-        // only changed by collision, never by the hash-based noise.
         forager_randomness: 0.0,
         scout_randomness: 0.0,
         sensor_distance: 0.03,
@@ -80,46 +74,4 @@ fn ant_moves_to_exact_position() {
     let result = sim.read_ant_state(&setup.device, &setup.queue);
 
     assert_eq!(result[0].position, [0.501, 0.5]);
-}
-
-#[test]
-fn ants_keep_direction_without_collision() {
-    // Two ants far apart: no collision triggers. With randomness=0 the direction
-    // vector is never modified, so it must survive the tick unchanged.
-    let ant_a = Ant::new([0.5, 0.5], [0.001, 0.0], AntType::Scout);
-    let ant_b = Ant::new([0.8, 0.8], [0.001, 0.0], AntType::Scout);
-    let (dir_a, dir_b) = (ant_a.direction, ant_b.direction);
-    let (setup, mut sim) = make_sim(vec![ant_a, ant_b]);
-
-    sim.update(&setup.device, &setup.queue);
-    let result = sim.read_ant_state(&setup.device, &setup.queue);
-
-    assert_eq!(
-        result[0].direction, dir_a,
-        "direction should be unchanged without collision"
-    );
-    assert_eq!(
-        result[1].direction, dir_b,
-        "direction should be unchanged without collision"
-    );
-}
-
-#[test]
-fn ants_change_direction_on_collision() {
-    // Two ants placed closer than collision_radius, both outside the colony.
-    // The collision shader rotates their directions by a hash-derived angle.
-    // Expected positions are the lavapipe-confirmed outputs for these exact inputs.
-    let ant_a = Ant::new([0.5, 0.5], [0.001, 0.0], AntType::Forager);
-    let ant_b = Ant::new(
-        [0.5 + COLLISION_RADIUS / 2.0, 0.5],
-        [-0.001, 0.0],
-        AntType::Forager,
-    );
-    let (setup, mut sim) = make_sim(vec![ant_a, ant_b]);
-
-    sim.update(&setup.device, &setup.queue);
-    let result = sim.read_ant_state(&setup.device, &setup.queue);
-
-    assert_eq!(result[0].position, [0.501, 0.5]);
-    assert_eq!(result[1].position, [0.49905002, 0.5]);
 }

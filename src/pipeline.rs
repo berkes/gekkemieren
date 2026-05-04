@@ -202,8 +202,6 @@ fn create_food_render_bind_group(
 /// No dependency on windowing or surface format — safe for headless use.
 #[derive(Debug)]
 pub struct SimulationPipeline {
-    collision_pipeline: wgpu::ComputePipeline,
-    collision_bind_group: wgpu::BindGroup,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pheromone_decay_pipeline: wgpu::ComputePipeline,
@@ -269,33 +267,6 @@ impl SimulationPipeline {
         let compute_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/compute.wgsl"));
 
-        let collision_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some("collision_pipeline"),
-            layout: None,
-            module: &compute_shader,
-            entry_point: Some("collision_main"),
-            compilation_options: Default::default(),
-            cache: Default::default(),
-        });
-        let collision_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("collision_bind_group"),
-            layout: &collision_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ant_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: colony_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: config_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             label: Some("compute_pipeline"),
             layout: None,
@@ -336,8 +307,6 @@ impl SimulationPipeline {
         );
 
         Self {
-            collision_pipeline,
-            collision_bind_group,
             compute_pipeline,
             compute_bind_group,
             pheromone_decay_pipeline,
@@ -355,7 +324,7 @@ impl SimulationPipeline {
         }
     }
 
-    /// Dispatches one simulation tick: pheromone decay → collision → movement.
+    /// Dispatches one simulation tick: pheromone decay → movement.
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let ant_count = self.ant_count as u32;
         let pheromone_count = self.grid_width * self.grid_height;
@@ -366,12 +335,6 @@ impl SimulationPipeline {
             pass.set_pipeline(&self.pheromone_decay_pipeline);
             pass.set_bind_group(0, &self.pheromone_decay_bind_group, &[]);
             pass.dispatch_workgroups(pheromone_count.div_ceil(64), 1, 1);
-        }
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.collision_pipeline);
-            pass.set_bind_group(0, &self.collision_bind_group, &[]);
-            pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
         }
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
