@@ -46,5 +46,5 @@ food_source_radius = 0.001 # Radius of the food source in units, 1 = full screen
 window_width = 1200
 window_height = 1200
 
-# Color palette (boldhues, warmearth, oceansunsetvibes, disco3, debug)
-palette = "disco3"
+# Color palette (pastel, debug)
+palette = "pastel"

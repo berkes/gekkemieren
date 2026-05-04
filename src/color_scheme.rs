@@ -1,69 +1,173 @@
+use serde::{Deserialize, Serialize};
+
+/// sRGB to linear conversion constants
+///
+/// sRGB uses a piecewise function:
+/// - Below SRGB_THRESHOLD: linear = srgb / SRGB_SCALE_BELOW
+/// - Above SRGB_THRESHOLD: linear = ((srgb + SRGB_ALPHA) / SRGB_BETA) ^ SRGB_GAMMA
+const SRGB_THRESHOLD: f32 = 0.04045;
+const SRGB_SCALE_BELOW: f32 = 12.92;
+const SRGB_ALPHA: f32 = 0.055;
+const SRGB_BETA: f32 = 1.055;
+const SRGB_GAMMA: f32 = 2.4;
+
+const DEFAULT_ALPHA: f32 = 1.0;
+
 #[repr(C)]
 #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ColorScheme {
     pub background: [f32; 4],
     pub forager: [f32; 4],
     pub scout: [f32; 4],
-    pub pheromone: [f32; 4],
-    // TODO: Food color should be configurable via palette, currently hardcoded to bright white
+    pub homing_pheromone: [f32; 4],
+    pub food_pheromone: [f32; 4],
     pub food: [f32; 4],
 }
-
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Palette {
-    BoldHues,
-    WarmEarth,
-    OceanSunsetVibes,
-    Disco3,
+    Pastel,
     Debug,
+}
+
+/// Convert sRGB value (0.0-1.0) to linear RGB
+///
+/// Formula:
+/// - If c <= 0.04045: c / 12.92
+/// - Otherwise: ((c + 0.055) / 1.055) ^ 2.4
+#[inline]
+fn srgb_to_linear(c: f32) -> f32 {
+    if c <= SRGB_THRESHOLD {
+        c / SRGB_SCALE_BELOW
+    } else {
+        ((c + SRGB_ALPHA) / SRGB_BETA).powf(SRGB_GAMMA)
+    }
+}
+
+/// Parse hex color string (e.g., "#4c054d" or "4c054d") to linear RGB [f32; 3]
+fn hex_to_linear_rgb(hex: &str) -> [f32; 3] {
+    let hex = hex.trim_start_matches('#');
+    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0) as f32 / 255.0;
+    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0) as f32 / 255.0;
+    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0) as f32 / 255.0;
+
+    [srgb_to_linear(r), srgb_to_linear(g), srgb_to_linear(b)]
+}
+
+/// Create a ColorScheme color (linear RGB + alpha) from hex string
+fn color_from_hex(hex: &str) -> [f32; 4] {
+    let rgb = hex_to_linear_rgb(hex);
+    [rgb[0], rgb[1], rgb[2], DEFAULT_ALPHA]
 }
 
 impl ColorScheme {
     pub fn from_palette(palette: Palette) -> Self {
         match palette {
-            Palette::BoldHues => Self {
-                // https://coolors.co/palette/f72585-7209b7-3a0ca3-4361ee-4cc9f0
-                // background: [1.000, 1.000, 1.000, 1.0],
-                background: [0.0, 0.0, 0.0, 1.0],
-                forager: [0.227, 0.047, 0.639, 1.0],   // #3a0ca3
-                scout: [0.263, 0.380, 0.933, 1.0],     // #4361ee
-                pheromone: [0.447, 0.035, 0.718, 1.0], // #7209b7
-                food: [1.0, 1.0, 1.0, 1.0],            // Bright white
-            },
-            Palette::WarmEarth => Self {
-                // https://coolors.co/palette/c9cba3-ffe1a8-e26d5c
-                background: [1.000, 1.000, 1.000, 1.0],
-                forager: [0.886, 0.427, 0.361, 1.0],   // #e26d5c
-                scout: [0.788, 0.796, 0.639, 1.0],     // #c9cba3
-                pheromone: [1.000, 0.882, 0.659, 1.0], // #ffe1a8
-                food: [1.0, 1.0, 1.0, 1.0],            // Bright white
-            },
-            Palette::OceanSunsetVibes => Self {
-                // https://coolors.co/palette/26547c-ef476f-ffd166-06d6a0
-                background: [0.149, 0.325, 0.478, 1.0], // #26547C Dusk Blue background
-                pheromone: [0.988, 0.824, 0.412, 1.0],  // #FFD166 Royal Gold
-                scout: [0.922, 0.298, 0.443, 1.0],      // #EF476F Bubblegum Pink
-                forager: [0.027, 0.851, 0.635, 1.0],    // #06D6A0 Emerald
-                food: [1.0, 1.0, 1.0, 1.0],             // Bright white
+            Palette::Pastel => Self {
+                // https://colorkit.co/palette/4c054d-de0ee1-f9b2fa-fde7fe-d7fcd7-b3fab2/
+                background: color_from_hex("#4c054d"),
+                forager: color_from_hex("#de0ee1"),
+                scout: color_from_hex("#f9b2fa"),
+                homing_pheromone: color_from_hex("#fde7fe"),
+                food_pheromone: color_from_hex("#d7fcd7"),
+                food: color_from_hex("#b3fab2"),
             },
             Palette::Debug => Self {
                 background: [1.0, 1.0, 1.0, 1.0],
                 forager: [0.0, 0.0, 0.0, 1.0],
                 scout: [0.0, 0.0, 0.0, 1.0],
-                pheromone: [0.0, 1.0, 0.0, 1.0],
-                food: [0.0, 0.0, 1.0, 1.0], // Blue for debug
+                homing_pheromone: [0.0, 1.0, 0.0, 1.0], // Green for homing
+                food_pheromone: [1.0, 0.0, 0.0, 1.0],   // Red for food
+                food: [0.0, 0.0, 1.0, 1.0],             // Blue for debug
             },
-            Palette::Disco3 => Self {
-                // https://coolors.co/palette/f72585-7209b7-3a0ca3
-                scout: [0.961, 0.133, 0.557, 1.0],      // #f72585
-                forager: [0.961, 0.133, 0.557, 1.0],    // #f72585
-                pheromone: [0.439, 0.035, 0.498, 1.0],  // #7209b7
-                background: [0.235, 0.063, 0.588, 1.0], // #3A0CA3
-                food: [1.0, 1.0, 1.0, 1.0],             // Bright white
-            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hex_to_linear_black() {
+        let result = hex_to_linear_rgb("#000000");
+        assert!((result[0] - 0.0).abs() < 0.0001);
+        assert!((result[1] - 0.0).abs() < 0.0001);
+        assert!((result[2] - 0.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_hex_to_linear_white() {
+        let result = hex_to_linear_rgb("#ffffff");
+        // White in linear is still [1.0, 1.0, 1.0]
+        assert!((result[0] - 1.0).abs() < 0.0001);
+        assert!((result[1] - 1.0).abs() < 0.0001);
+        assert!((result[2] - 1.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_hex_to_linear_gray_50() {
+        // #808080 = 128/255 ≈ 0.50196 sRGB
+        // Linear: ((0.50196 + 0.055) / 1.055) ^ 2.4 ≈ (0.55696/1.055)^2.4 ≈ 0.527^2.4 ≈ 0.225
+        let result = hex_to_linear_rgb("#808080");
+        let expected = ((0.50196 + SRGB_ALPHA) / SRGB_BETA).powf(SRGB_GAMMA);
+        assert!((result[0] - expected).abs() < 0.0001);
+        assert!((result[1] - expected).abs() < 0.0001);
+        assert!((result[2] - expected).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_hex_to_linear_red() {
+        // #ff0000 = pure red
+        let result = hex_to_linear_rgb("#ff0000");
+        assert!((result[0] - 1.0).abs() < 0.0001);
+        assert!((result[1] - 0.0).abs() < 0.0001);
+        assert!((result[2] - 0.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_hex_without_hash() {
+        let with_hash = hex_to_linear_rgb("#4c054d");
+        let without_hash = hex_to_linear_rgb("4c054d");
+        assert!((with_hash[0] - without_hash[0]).abs() < 0.0001);
+        assert!((with_hash[1] - without_hash[1]).abs() < 0.0001);
+        assert!((with_hash[2] - without_hash[2]).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_color_from_hex() {
+        let color = color_from_hex("#ffffff");
+        assert!((color[0] - 1.0).abs() < 0.0001);
+        assert!((color[1] - 1.0).abs() < 0.0001);
+        assert!((color[2] - 1.0).abs() < 0.0001);
+        assert!((color[3] - 1.0).abs() < 0.0001);
+    }
+
+    #[test]
+    fn test_from_palette_pastel() {
+        let scheme = ColorScheme::from_palette(Palette::Pastel);
+
+        // Verify all alphas are 1.0
+        assert_eq!(scheme.background[3], 1.0);
+        assert_eq!(scheme.forager[3], 1.0);
+        assert_eq!(scheme.scout[3], 1.0);
+        assert_eq!(scheme.homing_pheromone[3], 1.0);
+        assert_eq!(scheme.food_pheromone[3], 1.0);
+        assert_eq!(scheme.food[3], 1.0);
+
+        // Verify values are in valid range [0, 1]
+        for field in [
+            scheme.background,
+            scheme.forager,
+            scheme.scout,
+            scheme.homing_pheromone,
+            scheme.food_pheromone,
+            scheme.food,
+        ] {
+            assert!(field[0] >= 0.0 && field[0] <= 1.0);
+            assert!(field[1] >= 0.0 && field[1] <= 1.0);
+            assert!(field[2] >= 0.0 && field[2] <= 1.0);
         }
     }
 }

@@ -34,7 +34,7 @@ fn config() -> Config {
         food_source_radius: 0.001,
         window_width: 64, // test grid size
         window_height: 64,
-        palette: Palette::BoldHues,
+        palette: Palette::Pastel,
     }
 }
 
