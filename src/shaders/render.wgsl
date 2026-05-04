@@ -9,7 +9,8 @@ struct ColorScheme {
     background: vec4<f32>,
     forager:    vec4<f32>,
     scout:      vec4<f32>,
-    pheromone:  vec4<f32>,
+    homing_pheromone: vec4<f32>,
+    food_pheromone:  vec4<f32>,
     food:       vec4<f32>,
 }
 
@@ -31,9 +32,9 @@ fn vs_main(@builtin(instance_index) instance: u32) -> VertexOutput {
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    if in.carries_food == 1u {
-        return colors.food;
-    }
+    // if in.carries_food == 1u {
+    //     return colors.food;
+    // }
     if in.ant_type == 1u {
         return colors.scout;
     }

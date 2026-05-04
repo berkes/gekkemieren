@@ -11,7 +11,6 @@ struct GpuConfig {
     decay_amount: u32,
     max_strength: u32,
     deposit_amount: u32,
-    deposit_amount_carrying_food: u32,
     dot_radius: f32,
     collision_radius: f32,
     collision_angle_min: f32,
@@ -24,18 +23,17 @@ struct GpuConfig {
     base_speed: f32,
     scout_ratio: f32,
     ratio_step: f32,
-    homing_strength: f32,
+    food_source_radius: f32,
     window_width: u32,
     window_height: u32,
-    _pad1: u32,
-    _pad2: u32,
 }
 
 struct ColorScheme {
     background: vec4<f32>,
     forager:    vec4<f32>,
     scout:      vec4<f32>,
-    pheromone:  vec4<f32>,
+    homing_pheromone: vec4<f32>,
+    food_pheromone:  vec4<f32>,
     food:       vec4<f32>,
 }
 

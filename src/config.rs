@@ -21,7 +21,6 @@ pub struct Config {
     pub decay_amount: u32,
     pub max_strength: u32,
     pub deposit_amount: u32,
-    pub deposit_amount_carrying_food: u32,
     pub dot_radius: f32,
     pub collision_radius: f32,
     pub collision_angle_min: f32,
@@ -34,7 +33,6 @@ pub struct Config {
     pub base_speed: f32,
     pub scout_ratio: f32,
     pub ratio_step: f32,
-    pub homing_strength: f32,
     pub food_source_radius: f32,
     pub window_width: u32,
     pub window_height: u32,
@@ -62,7 +60,6 @@ pub struct GpuConfig {
     pub decay_amount: u32,
     pub max_strength: u32,
     pub deposit_amount: u32,
-    pub deposit_amount_carrying_food: u32,
     pub dot_radius: f32,
     pub collision_radius: f32,
     pub collision_angle_min: f32,
@@ -75,12 +72,10 @@ pub struct GpuConfig {
     pub base_speed: f32,
     pub scout_ratio: f32,
     pub ratio_step: f32,
-    pub homing_strength: f32,
     pub food_source_radius: f32,
     // Window and UI settings (not used by GPU shaders but included for simplicity)
     pub window_width: u32,
     pub window_height: u32,
-    pub _pad2: u32,
 }
 
 impl From<&Config> for GpuConfig {
@@ -89,7 +84,6 @@ impl From<&Config> for GpuConfig {
             decay_amount: config.decay_amount,
             max_strength: config.max_strength,
             deposit_amount: config.deposit_amount,
-            deposit_amount_carrying_food: config.deposit_amount_carrying_food,
             dot_radius: config.dot_radius,
             collision_radius: config.collision_radius,
             collision_angle_min: config.collision_angle_min,
@@ -102,11 +96,9 @@ impl From<&Config> for GpuConfig {
             base_speed: config.base_speed,
             scout_ratio: config.scout_ratio,
             ratio_step: config.ratio_step,
-            homing_strength: config.homing_strength,
             food_source_radius: config.food_source_radius,
             window_width: config.window_width,
             window_height: config.window_height,
-            _pad2: 0,
         }
     }
 }

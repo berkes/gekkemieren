@@ -9,7 +9,8 @@ struct ColorScheme {
     background: vec4<f32>,
     forager:    vec4<f32>,
     scout:      vec4<f32>,
-    pheromone:  vec4<f32>,
+    homing_pheromone: vec4<f32>,
+    food_pheromone:  vec4<f32>,
     food:       vec4<f32>,
 }
 
@@ -32,7 +33,7 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let x = min(u32(pos.x), grid_info.width - 1u);
     let y = min(u32(pos.y), grid_info.height - 1u);
     let food_value = food_grid[y * grid_info.width + x];
-    
+
     // If there's food (value = 1), display it with the food color
     // Otherwise, display background (transparent or mixed)
     if food_value > 0u {

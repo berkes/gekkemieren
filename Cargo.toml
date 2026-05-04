@@ -3,6 +3,14 @@ name = "gekkemieren"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "gekkemieren"
+path = "src/main.rs"
+
+[[bin]]
+name = "debug_colors"
+path = "src/bin/debug_colors.rs"
+
 [dependencies]
 anyhow = "1.0.102"
 bytemuck = { version = "1.25.0", features = ["derive"] }
