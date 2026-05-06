@@ -28,6 +28,7 @@ pub struct ColorScheme {
 #[serde(rename_all = "lowercase")]
 pub enum Palette {
     Pastel,
+    Light,
     Debug,
 }
 
@@ -65,21 +66,30 @@ impl ColorScheme {
     pub fn from_palette(palette: Palette) -> Self {
         match palette {
             Palette::Pastel => Self {
-                // https://colorkit.co/palette/4c054d-de0ee1-f9b2fa-fde7fe-d7fcd7-b3fab2/
-                background: color_from_hex("#4c054d"),
-                forager: color_from_hex("#de0ee1"),
-                scout: color_from_hex("#f9b2fa"),
-                homing_pheromone: color_from_hex("#fde7fe"),
-                food_pheromone: color_from_hex("#d7fcd7"),
-                food: color_from_hex("#b3fab2"),
+              //  #ff99c8, #fcf6bd, #d0f4de, #a9def9, #e4c1f9
+              background: color_from_hex("#0c090d"),
+              forager: color_from_hex("#d0f4de"),
+              scout: color_from_hex("#a9def9"),
+              homing_pheromone: color_from_hex("#e4c1f9"),
+              food_pheromone: color_from_hex("#fcf6bd"),
+              food: color_from_hex("#fcf6bd"),
+            },
+            Palette::Light => Self {
+               // #e7ecef, #274c77, #6096ba, #a3cef1
+               background: color_from_hex("#e7ecef"),
+               forager: color_from_hex("#0c090d"),
+               scout: color_from_hex("#274c77"),
+               homing_pheromone: color_from_hex("#6096ba"),
+               food_pheromone: color_from_hex("#a3cef1"),
+               food: color_from_hex("#a3cef1")
             },
             Palette::Debug => Self {
                 background: [1.0, 1.0, 1.0, 1.0],
-                forager: [0.0, 0.0, 0.0, 1.0],
-                scout: [0.0, 0.0, 0.0, 1.0],
-                homing_pheromone: [0.0, 1.0, 0.0, 1.0], // Green for homing
-                food_pheromone: [1.0, 0.0, 0.0, 1.0],   // Red for food
-                food: [0.0, 0.0, 1.0, 1.0],             // Blue for debug
+                forager: [0.1, 0.0, 0.0, 1.0],
+                scout: [0.0, 0.1, 0.0, 1.0],
+                homing_pheromone: [0.0, 1.0, 1.0, 1.0],
+                food_pheromone: [1.0, 1.0, 0.0, 1.0],
+                food: [0.0, 0.0, 1.0, 1.0],
             },
         }
     }
