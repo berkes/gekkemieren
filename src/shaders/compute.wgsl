@@ -130,13 +130,13 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
 
-    // Food drop logic: drop food when entering colony
     if ant.carries_food == 1u && in_colony(ant.position) {
         ant.carries_food = 0u;
-        // ant.direction = -ant.direction; // Reverse direction to avoid immediate re-entry
+        ant.direction = -ant.direction;
     }
 
-    // Pheromone following: ants without food follow food pheromones (grid 0), ants with food follow homing pheromones (grid 1)
+    // Pheromone following: ants without food follow food pheromones (grid 0),
+    // ants with food follow homing pheromones (grid 1)
     let dir_norm = normalize(ant.direction);
     let left_pos = ant.position + rotate(dir_norm, config.sensor_angle) * config.sensor_distance;
     let right_pos = ant.position + rotate(dir_norm, -config.sensor_angle) * config.sensor_distance;
@@ -168,7 +168,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
             ant.direction = rotate(ant.direction, config.sensor_angle);
         } else if right_sample > left_sample {
             ant.direction = rotate(ant.direction, -config.sensor_angle);
-        } else if ant.ant_type == 0u && right_sample == 0.0 && left_sample == 0.0 {
+        } else if ant.ant_type == 0u && right_sample <= 0.01 && left_sample <= 0.01 {
             ant.direction = -ant.direction;
         }
     }
