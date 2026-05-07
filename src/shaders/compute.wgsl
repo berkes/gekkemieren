@@ -96,8 +96,8 @@ fn sample_pheromone_area(pos: vec2<f32>, grid_selector: u32) -> f32 {
                     grid_selector == 1u
                 );
                 total += strength;
-                count += 1.0;
             }
+            count += 1.0;
         }
     }
     return total / count;
