@@ -127,7 +127,8 @@ impl State {
         );
         // Update food spawner's grid size and re-upload data
         self.food_spawner.food_grid = crate::food::FoodGrid::new(width, height);
-        self.food_spawner.spawn_food_circle(self.config.food_source_radius);
+        self.food_spawner
+            .spawn_food_circle(self.config.food_source_radius);
         self.wgpu_setup.queue.write_buffer(
             &self.simulation.food_buffer,
             0,
