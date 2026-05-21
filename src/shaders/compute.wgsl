@@ -24,23 +24,18 @@ struct GpuConfig {
     scout_ratio: f32,
     ratio_step: f32,
     food_source_radius: f32,
+    colony_center: vec2<f32>,
+    colony_half_size: f32,
     window_width: u32,
     window_height: u32,
 }
 
-struct Colony {
-    center: vec2<f32>,
-    half_size: f32,
-    _pad: f32,
-}
-
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
-@group(0) @binding(1) var<uniform> colony: Colony;
-@group(0) @binding(2) var<storage, read_write> homing_pheromone_grid: array<f32>;
-@group(0) @binding(3) var<storage, read_write> food_pheromone_grid: array<f32>;
-@group(0) @binding(4) var<uniform> grid_info: GridInfo;
-@group(0) @binding(5) var<uniform> config: GpuConfig;
-@group(0) @binding(6) var<storage, read_write> food_grid: array<atomic<u32>>;
+@group(0) @binding(1) var<storage, read_write> homing_pheromone_grid: array<f32>;
+@group(0) @binding(2) var<storage, read_write> food_pheromone_grid: array<f32>;
+@group(0) @binding(3) var<uniform> grid_info: GridInfo;
+@group(0) @binding(4) var<uniform> config: GpuConfig;
+@group(0) @binding(5) var<storage, read_write> food_grid: array<atomic<u32>>;
 
 // Hash constants - primes used for pseudo-random number generation
 const HASH_COORD_SCALE: vec2<f32> = vec2<f32>(127.1, 311.7);
@@ -67,8 +62,8 @@ fn random(seed: vec3<f32>, min: f32, max: f32) -> f32 {
 }
 
 fn in_colony(pos: vec2<f32>) -> bool {
-    let d = abs(pos - colony.center);
-    return d.x < colony.half_size && d.y < colony.half_size;
+    let d = abs(pos - config.colony_center);
+    return d.x < config.colony_half_size && d.y < config.colony_half_size;
 }
 
 // Sample pheromone strength from a 3x3 area around pos from the specified grid.

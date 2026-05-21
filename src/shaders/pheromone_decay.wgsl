@@ -10,6 +10,8 @@ struct GpuConfig {
     scout_ratio: f32,
     ratio_step: f32,
     food_source_radius: f32,
+    colony_center: vec2<f32>,
+    colony_half_size: f32,
     window_width: u32,
     window_height: u32,
 }

@@ -65,11 +65,10 @@ pub trait AntSpawner {
 /// Colony settings shared between CPU logic and GPU shaders.
 /// Layout must match the `Colony` struct in compute.wgsl.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Copy, Debug)]
 pub struct Colony {
     pub center: [f32; 2],
     pub half_size: f32,
-    pub _pad: f32,
 }
 
 impl Colony {
@@ -77,14 +76,7 @@ impl Colony {
         Self {
             center,
             half_size,
-            _pad: 0.0,
         }
-    }
-}
-
-impl Default for Colony {
-    fn default() -> Self {
-        Self::new([0.5, 0.5], 0.01)
     }
 }
 

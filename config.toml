@@ -23,6 +23,10 @@ ratio_step = 0.05        # Step size for adjusting ratio with arrow keys
 # Food settings
 food_source_radius = 0.01 # Radius of the food source in units, 1 = full screen width
 
+# Colony
+colony_center = [0.5, 0.5] # x, y Position of the colony x = 0 = left, x = 1 = right, y = 0 = top, y = 1 = bottom
+colony_radius = 0.01 # Radius of the colony in units
+
 # Window settings in pixels
 # window_width = 1980
 # window_height = 1200

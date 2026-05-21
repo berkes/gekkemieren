@@ -40,7 +40,7 @@ impl State {
         let gpu_config = GpuConfig::from(&config);
 
         let spawner = RandomSpawner::new(
-            Colony::default(),
+            Colony::new(config.colony_center, config.colony_radius),
             config.n_ants,
             config.scout_ratio,
             config.base_speed,
@@ -55,7 +55,6 @@ impl State {
             wgpu_setup.config.width,
             wgpu_setup.config.height,
             gpu_config,
-            spawner.colony(),
             spawner.ants(),
         );
 

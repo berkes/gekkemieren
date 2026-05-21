@@ -25,6 +25,8 @@ fn config() -> Config {
         window_width: 64, // test grid size
         window_height: 64,
         palette: Palette::Pastel,
+        colony_center: [0.5, 0.5],
+        colony_radius: 0.01,
     }
 }
 
@@ -34,13 +36,18 @@ fn gpu_config() -> GpuConfig {
 
 fn make_sim(ants: Vec<Ant>) -> (common::HeadlessGpuSetup, SimulationPipeline) {
     let setup = pollster::block_on(common::HeadlessGpuSetup::new()).unwrap();
-    let spawner = FixedSpawner::new(ants, Colony::default());
+    // Create config with colony settings matching the spawner's colony
+    let mut config = gpu_config();
+    config.colony_center = [0.5, 0.5];
+    config.colony_radius = 0.01;
+    let colony = Colony::new(config.colony_center, config.colony_radius);
+    let spawner = FixedSpawner::new(ants, colony);
+
     let sim = SimulationPipeline::new(
         &setup.device,
         64,
         64,
-        gpu_config(),
-        spawner.colony(),
+        config,
         spawner.ants(),
     );
     (setup, sim)
