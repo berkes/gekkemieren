@@ -31,6 +31,8 @@ find and retrieve food and avoid obstructions.
 
 ## Development Notes
 
+You are not finished until you have run all the tests, linting and formatting. And until all warnings and errors are fixed from both `cargo check` and `cargo clippy`.
+
 ### Iterate
 
 Develop in small iterations. Each iteration:
