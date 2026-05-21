@@ -44,13 +44,7 @@ fn make_sim(ants: Vec<Ant>) -> (common::HeadlessGpuSetup, SimulationPipeline) {
     let colony = Colony::new(config.colony_center, config.colony_radius);
     let spawner = FixedSpawner::new(ants, colony);
 
-    let sim = SimulationPipeline::new(
-        &setup.device,
-        64,
-        64,
-        config,
-        spawner.ants(),
-    );
+    let sim = SimulationPipeline::new(&setup.device, 64, 64, config, spawner.ants());
     (setup, sim)
 }
 

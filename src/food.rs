@@ -108,10 +108,6 @@ impl FoodSpawner {
 
     pub fn spawn_food_circle(&mut self, center: [f32; 2], radius: f32) {
         let food = FoodCircle { center, radius };
-        self.spawn_food_circle_struct(food);
-    }
-
-    pub fn spawn_food_circle_struct(&mut self, food: FoodCircle) {
         self.food_grid.fill_circle(food);
     }
 

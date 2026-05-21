@@ -73,10 +73,7 @@ pub struct Colony {
 
 impl Colony {
     pub fn new(center: [f32; 2], half_size: f32) -> Self {
-        Self {
-            center,
-            half_size,
-        }
+        Self { center, half_size }
     }
 }
 
