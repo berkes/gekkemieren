@@ -61,6 +61,7 @@ impl WgpuSetup {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
+        surface.configure(&device, &config);
 
         Ok(Self {
             surface,
@@ -68,13 +69,5 @@ impl WgpuSetup {
             queue,
             config,
         })
-    }
-
-    pub fn resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
-            self.config.width = width;
-            self.config.height = height;
-            self.surface.configure(&self.device, &self.config);
-        }
     }
 }

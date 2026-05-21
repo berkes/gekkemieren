@@ -26,11 +26,9 @@ pub struct State {
     simulation: SimulationPipeline,
     pipeline: RenderPipeline,
     config: Config,
-    is_surface_configured: bool,
     frame_count: u32,
     log_timer: std::time::Instant,
     spawner: RandomSpawner,
-    food_spawner: FoodSpawner,
 }
 
 impl State {
@@ -79,12 +77,10 @@ impl State {
             simulation,
             pipeline,
             config,
-            is_surface_configured: false,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
 
             spawner,
-            food_spawner,
         })
     }
 
@@ -116,28 +112,6 @@ impl State {
         }
     }
 
-    fn resize(&mut self, width: u32, height: u32) {
-        self.wgpu_setup.resize(width, height);
-        self.simulation.resize(
-            &self.wgpu_setup.device,
-            &self.wgpu_setup.queue,
-            width,
-            height,
-        );
-        // Update food spawner's grid size and re-upload data
-        self.food_spawner.food_grid = crate::food::FoodGrid::new(width, height);
-        self.food_spawner
-            .spawn_food_circle(self.config.food_source_center, self.config.food_source_radius);
-        self.wgpu_setup.queue.write_buffer(
-            &self.simulation.food_buffer,
-            0,
-            bytemuck::cast_slice(&self.food_spawner.food_grid.data),
-        );
-        self.pipeline
-            .on_resize(&self.wgpu_setup.device, &self.simulation);
-        self.is_surface_configured = true;
-    }
-
     fn render(&mut self) -> anyhow::Result<()> {
         self.window.request_redraw();
         self.frame_count += 1;
@@ -146,10 +120,6 @@ impl State {
             log::debug!("ratio: {:.2}", self.config.scout_ratio);
             self.frame_count = 0;
             self.log_timer = std::time::Instant::now();
-        }
-
-        if !self.is_surface_configured {
-            return Ok(());
         }
 
         let output = match self.wgpu_setup.surface.get_current_texture() {
@@ -288,7 +258,8 @@ impl ApplicationHandler<State> for App {
             .with_inner_size(winit::dpi::Size::Physical(winit::dpi::PhysicalSize::new(
                 self.config.window_width,
                 self.config.window_height,
-            )));
+            )))
+            .with_resizable(false);
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         self.state = Some(pollster::block_on(State::new(window, self.config.clone())).unwrap());
@@ -311,7 +282,6 @@ impl ApplicationHandler<State> for App {
 
         match event {
             WindowEvent::CloseRequested => event_loop.exit(),
-            WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => match state.render() {
                 Ok(_) => {}
                 Err(e) => {

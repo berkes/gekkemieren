@@ -302,62 +302,6 @@ impl SimulationPipeline {
         queue.submit([encoder.finish()]);
     }
 
-    /// Resizes the pheromone grids and rebuilds the affected bind groups.
-    pub fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, width: u32, height: u32) {
-        self.grid_width = width;
-        self.grid_height = height;
-
-        let grid_info = GridInfo {
-            width,
-            height,
-            _pad: [0; 2],
-        };
-        queue.write_buffer(&self.grid_info_buffer, 0, bytemuck::bytes_of(&grid_info));
-
-        self.homing_pheromone_buffer =
-            create_pheromone_buffer(device, width, height, "homing_pheromone_buffer");
-        self.food_pheromone_buffer =
-            create_pheromone_buffer(device, width, height, "food_pheromone_buffer");
-        self.food_buffer = create_food_buffer(device, width, height);
-        self.compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("compute_bind_group"),
-            layout: &self.compute_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.ant_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: self.homing_pheromone_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: self.food_pheromone_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: self.grid_info_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: self.config_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: self.food_buffer.as_entire_binding(),
-                },
-            ],
-        });
-        self.pheromone_decay_bind_group = create_pheromone_decay_bind_group(
-            device,
-            &self.pheromone_decay_pipeline,
-            &self.homing_pheromone_buffer,
-            &self.food_pheromone_buffer,
-            &self.config_buffer,
-        );
-    }
-
     /// Copies the ant buffer back to CPU. Used in tests to inspect simulation state.
     pub fn read_ant_state(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<Ant> {
         let size = (self.ant_count * std::mem::size_of::<Ant>()) as u64;
@@ -643,33 +587,6 @@ impl RenderPipeline {
             b: scheme.background[2] as f64,
             a: scheme.background[3] as f64,
         };
-    }
-
-    /// Rebuilds the pheromone render bind group after a simulation resize.
-    /// Must be called whenever `SimulationPipeline::resize` has been called.
-    pub fn on_resize(&mut self, device: &wgpu::Device, simulation: &SimulationPipeline) {
-        self.pheromone_render_bind_group = create_pheromone_render_bind_group(
-            device,
-            &self.pheromone_render_pipeline,
-            &simulation.homing_pheromone_buffer,
-            &simulation.food_pheromone_buffer,
-            &simulation.grid_info_buffer,
-            &self.color_scheme_buffer,
-        );
-        self.food_render_bind_group = create_food_render_bind_group(
-            device,
-            &self.food_render_pipeline,
-            &simulation.food_buffer,
-            &simulation.grid_info_buffer,
-            &self.color_scheme_buffer,
-        );
-        self.hud_bind_group = create_hud_bind_group(
-            device,
-            &self.hud_pipeline,
-            &simulation.grid_info_buffer,
-            &simulation.config_buffer,
-            &self.color_scheme_buffer,
-        );
     }
 
     pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>, ant_count: u32) {
