@@ -49,7 +49,7 @@ pub fn save_screenshot(
     // Calculate aligned bytes per row for wgpu copy requirements
     let bytes_per_row = 4 * width;
     let alignment = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
-    let bytes_per_row_aligned = (bytes_per_row + alignment - 1) / alignment * alignment;
+    let bytes_per_row_aligned = bytes_per_row.div_ceil(alignment) * alignment;
     let output_buffer_size = (bytes_per_row_aligned * height) as usize;
 
     // Create output buffer with space for aligned rows (padding)
