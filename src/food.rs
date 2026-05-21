@@ -21,6 +21,11 @@ pub struct FoodGrid {
     pub height: u32,
 }
 
+pub struct FoodCircle {
+    pub center: [f32; 2],
+    pub radius: f32,
+}
+
 impl FoodGrid {
     /// Create a new empty food grid.
     pub fn new(width: u32, height: u32) -> Self {
@@ -49,7 +54,10 @@ impl FoodGrid {
 
     /// Fill a circle with food.
     /// Center is in normalized coordinates [0, 1], radius is in normalized coordinates.
-    pub fn fill_circle(&mut self, center: [f32; 2], radius: f32) {
+    pub fn fill_circle(&mut self, food: FoodCircle) {
+        let center = food.center;
+        let radius = food.radius;
+
         let cx = (center[0] * self.width as f32) as i32;
         let cy = (center[1] * self.height as f32) as i32;
         let r_squared = (radius * self.width as f32).powi(2) as i32;
@@ -98,9 +106,18 @@ impl FoodSpawner {
         }
     }
 
+    pub fn spawn_food_circle(&mut self, center: [f32; 2], radius: f32) {
+        let food = FoodCircle { center, radius };
+        self.spawn_food_circle_struct(food);
+    }
+
+    pub fn spawn_food_circle_struct(&mut self, food: FoodCircle) {
+        self.food_grid.fill_circle(food);
+    }
+
     /// Spawn food as a circle near a random edge.
     /// The circle is placed randomly near one of the four edges.
-    pub fn spawn_food_circle(&mut self, radius: f32) {
+    pub fn random_food_circle(&mut self, radius: f32) -> FoodCircle {
         use rand::RngExt;
         let mut rng = rand::rng();
 
@@ -130,7 +147,6 @@ impl FoodSpawner {
             }
             _ => [0.5, 0.5],
         };
-
-        self.food_grid.fill_circle(center, radius);
+        FoodCircle { center, radius }
     }
 }

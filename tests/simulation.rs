@@ -21,6 +21,7 @@ fn config() -> Config {
         base_speed: 0.0,  // not used in test
         scout_ratio: 0.0, // not used in test
         ratio_step: 0.0,  // not used in test
+        food_source_center: [0.9, 0.0],
         food_source_radius: 0.001,
         window_width: 64, // test grid size
         window_height: 64,
