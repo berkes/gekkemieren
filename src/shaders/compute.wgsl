@@ -110,6 +110,23 @@ fn get_index(position: vec2<f32>) -> u32 {
     return cell_y * grid_info.width + cell_x;
 }
 
+fn deposit_pheromone_pixel(cell_x: u32, cell_y: u32, carries_food: u32) {
+    let idx = cell_y * grid_info.width + cell_x;
+    if carries_food == 1u {
+        food_pheromone_grid[idx] = clamp(
+            food_pheromone_grid[idx] + config.deposit_ratio,
+            0.0,
+            1.0
+        );
+    } else {
+        homing_pheromone_grid[idx] = clamp(
+            homing_pheromone_grid[idx] + config.deposit_ratio,
+            0.0,
+            1.0
+        );
+    }
+}
+
 @compute
 @workgroup_size(64)
 fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -189,22 +206,6 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
 
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
     let cell_y = clamp(u32(ant.position.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
-    let idx = cell_y * grid_info.width + cell_x;
 
-    // Deposit to the appropriate pheromone grid
-    // Ants carrying food deposit food pheromones (path to colony)
-    // Ants not carrying food deposit homing pheromones (path to food)
-    if ant.carries_food == 1u {
-        food_pheromone_grid[idx] = clamp(
-            food_pheromone_grid[idx] + config.deposit_ratio,
-            0.0,
-            1.0
-        );
-    } else {
-        homing_pheromone_grid[idx] = clamp(
-            homing_pheromone_grid[idx] + config.deposit_ratio,
-            0.0,
-            1.0
-        );
-    }
+    deposit_pheromone_pixel(cell_x, cell_y, ant.carries_food);
 }
