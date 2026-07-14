@@ -19,6 +19,8 @@ pub struct Ant {
     pub direction: [f32; 2],
     pub ant_type: u32,
     pub carries_food: u32,
+    pub lifetime: u32,
+    pub _pad: u32, // padding to align to 16 bytes
 }
 
 impl Ant {
@@ -28,6 +30,8 @@ impl Ant {
             direction,
             ant_type: ant_type.as_u32(),
             carries_food: 0,
+            lifetime: 0,
+            _pad: 0,
         }
     }
 }
@@ -46,14 +50,14 @@ mod tests {
 
     #[test]
     fn ant_struct_size_and_offsets() {
-        // Verify Ant struct is 24 bytes (8+8+4+4) with no padding
-        assert_eq!(std::mem::size_of::<Ant>(), 24);
+        assert_eq!(std::mem::size_of::<Ant>(), 32);
 
         // Verify field offsets match WGSL std430 layout
         assert_eq!(std::mem::offset_of!(Ant, position), 0);
         assert_eq!(std::mem::offset_of!(Ant, direction), 8);
         assert_eq!(std::mem::offset_of!(Ant, ant_type), 16);
         assert_eq!(std::mem::offset_of!(Ant, carries_food), 20);
+        assert_eq!(std::mem::offset_of!(Ant, lifetime), 24);
     }
 
     #[test]
@@ -70,6 +74,8 @@ mod tests {
             direction: [3.0, 4.0],
             ant_type: 5,
             carries_food: 0xDEADBEEF,
+            lifetime: 0,
+            _pad: 0,
         };
         let bytes: &[u8] = bytemuck::bytes_of(&ant);
         // offset 0-8: position [1.0, 2.0] as f32

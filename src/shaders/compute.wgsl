@@ -3,6 +3,7 @@ struct Ant {
     direction: vec2<f32>,
     ant_type: u32, // Forager = 0, Scout = 1
     carries_food: u32,
+    lifetime: u32,
 }
 
 struct GridInfo {
@@ -19,15 +20,16 @@ struct GpuConfig {
     scout_randomness: f32,
     sensor_distance: f32,
     sensor_angle: f32,
-    n_ants: u32,
-    base_speed: f32,
     scout_ratio: f32,
-    ratio_step: f32,
+    _pad0: u32,
+    food_source_center: vec2<f32>,
     food_source_radius: f32,
+    _pad1: u32,
     colony_center: vec2<f32>,
-    colony_half_size: f32,
-    window_width: u32,
-    window_height: u32,
+    colony_radius: f32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
 }
 
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
@@ -62,8 +64,8 @@ fn random(seed: vec3<f32>, min: f32, max: f32) -> f32 {
 }
 
 fn in_colony(pos: vec2<f32>) -> bool {
-    let d = abs(pos - config.colony_center);
-    return d.x < config.colony_half_size && d.y < config.colony_half_size;
+    let dist = distance(pos, config.colony_center);
+    return dist < config.colony_radius;
 }
 
 // Sample pheromone strength from a 3x3 area around pos from the specified grid.
@@ -127,6 +129,9 @@ fn deposit_pheromone_pixel(cell_x: u32, cell_y: u32, carries_food: u32) {
     }
 }
 
+// Maximum lifetime in ticks before an ant "dies" and respawns at colony
+const MAX_LIFETIME: u32 = 500u;
+
 @compute
 @workgroup_size(64)
 fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -136,6 +141,22 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     var ant = ants[index];
+
+    // Increment lifetime and check for death
+    if random(vec3<f32>(ant.position, f32(index)), 0.0, 1.0) < 0.8 {
+        ant.lifetime += 1u;
+    }
+
+    if ant.lifetime >= MAX_LIFETIME {
+        // Reset ant: teleport to colony, drop food, keep direction and type
+        // Use random position within colony bounds
+        // let offset_x = random(vec3<f32>(ant.position, f32(index)), -0.5, 0.5) * 0.02;
+        // let offset_y = random(vec3<f32>(ant.position, f32(index + 1u)), -0.5, 0.5) * 0.02;
+        ant.position = config.colony_center;
+        ant.carries_food = 0u;
+        ant.lifetime = 0u;
+    }
+
     let next = ant.position + ant.direction;
     if next.x < 0.0 || next.x > 1.0 { ant.direction.x = -ant.direction.x; }
     if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
@@ -145,6 +166,11 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     if ant.carries_food == 1u && in_colony(ant.position) {
         ant.carries_food = 0u;
         ant.direction = -ant.direction;
+    }
+
+    // Reset lifetime whenever any ant enters the colony
+    if in_colony(ant.position) {
+        ant.lifetime = 0u;
     }
 
     // Pheromone following: ants without food follow food pheromones (grid 0),

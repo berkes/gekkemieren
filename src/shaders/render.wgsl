@@ -3,6 +3,7 @@ struct Ant {
     direction: vec2<f32>,
     ant_type: u32,
     carries_food: u32,
+    lifetime: u32,
 }
 
 struct ColorScheme {

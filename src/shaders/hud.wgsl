@@ -14,15 +14,16 @@ struct GpuConfig {
     scout_randomness: f32,
     sensor_distance: f32,
     sensor_angle: f32,
-    n_ants: u32,
-    base_speed: f32,
     scout_ratio: f32,
-    ratio_step: f32,
+    _pad0: u32,
+    food_source_center: vec2<f32>,
     food_source_radius: f32,
+    _pad1: u32,
     colony_center: vec2<f32>,
-    colony_half_size: f32,
-    window_width: u32,
-    window_height: u32,
+    colony_radius: f32,
+    _pad2: u32,
+    _pad3: u32,
+    _pad4: u32,
 }
 
 struct ColorScheme {
@@ -85,6 +86,15 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
         }
     }
 
-    // Transparent outside the bar
+    // DEBUG: Draw a red circle at config.colony_center to visualize where shader thinks colony is
+    // Convert normalized [0,1] colony center to pixel coordinates
+    // let colony_px = config.colony_center.x * screen_width;
+    // let colony_py = config.colony_center.y * screen_height;
+    // let dist = distance(vec2<f32>(px, py), vec2<f32>(colony_px, colony_py));
+    // if dist < config.colony_radius * screen_width {
+    //     return vec4<f32>(1.0, 0.0, 0.0, 1.0); // Bright red
+    // }
+
+    // Transparent outside the bar and circle
     return vec4<f32>(0.0, 0.0, 0.0, 0.0);
 }

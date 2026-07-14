@@ -68,12 +68,12 @@ pub trait AntSpawner {
 #[derive(Clone, Copy, Debug)]
 pub struct Colony {
     pub center: [f32; 2],
-    pub half_size: f32,
+    pub radius: f32,
 }
 
 impl Colony {
-    pub fn new(center: [f32; 2], half_size: f32) -> Self {
-        Self { center, half_size }
+    pub fn new(center: [f32; 2], radius: f32) -> Self {
+        Self { center, radius }
     }
 }
 
@@ -92,7 +92,7 @@ impl RandomSpawner {
 
         let mut rng = rand::rng();
         let [cx, cy] = colony.center;
-        let hs = colony.half_size;
+        let radius = colony.radius;
 
         let ants = (0..ant_count)
             .map(|_| {
@@ -102,8 +102,9 @@ impl RandomSpawner {
                 } else {
                     AntType::Forager
                 };
-                let x = cx + rng.random_range(-hs..hs);
-                let y = cy + rng.random_range(-hs..hs);
+                // Random within the circle of the colony
+                let x = cx + rng.random::<f32>() * radius * angle.cos();
+                let y = cy + rng.random::<f32>() * radius * angle.sin();
                 Ant::new([x, y], [angle.cos() * speed, angle.sin() * speed], ant_type)
             })
             .collect();
@@ -217,11 +218,11 @@ mod tests {
     fn all_ants_within_colony_bounds() {
         let s = spawner();
         let [cx, cy] = s.colony.center;
-        let hs = s.colony.half_size;
+        let radius = s.colony.radius;
         for ant in s.ants() {
             let [x, y] = ant.position;
             assert!(
-                (x - cx).abs() < hs && (y - cy).abs() < hs,
+                (x - cx).abs() < radius && (y - cy).abs() < radius,
                 "ant at [{x}, {y}] is outside colony bounds"
             );
         }

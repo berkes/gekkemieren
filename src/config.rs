@@ -61,24 +61,16 @@ pub struct GpuConfig {
     pub scout_randomness: f32,
     pub sensor_distance: f32,
     pub sensor_angle: f32,
-    pub n_ants: u32,
-    pub base_speed: f32,
     pub scout_ratio: f32,
-    pub ratio_step: f32,
-    // Padding to align colony_center to 8 bytes (vec2<f32> in WGSL requires 8-byte alignment)
-    pub _pad1: f32,
+    pub _pad0: u32,
     pub food_source_center: [f32; 2],
     pub food_source_radius: f32,
-    // Padding to align colony_center to 8 bytes (vec2<f32> in WGSL requires 8-byte alignment)
-    pub _pad2: f32,
-    // Colony settings
+    pub _pad1: u32,
     pub colony_center: [f32; 2],
     pub colony_radius: f32,
-    // Window and UI settings (not used by GPU shaders but included for simplicity)
-    pub window_width: u32,
-    pub window_height: u32,
-    // Padding to match WGSL struct size (72 bytes total, aligned to 8)
-    pub _pad3: f32,
+    pub _pad2: u32,
+    pub _pad3: u32,
+    pub _pad4: u32,
 }
 
 impl From<&Config> for GpuConfig {
@@ -90,19 +82,16 @@ impl From<&Config> for GpuConfig {
             scout_randomness: config.scout_randomness,
             sensor_distance: config.sensor_distance,
             sensor_angle: config.sensor_angle,
-            n_ants: config.n_ants as u32,
-            base_speed: config.base_speed,
             scout_ratio: config.scout_ratio,
-            ratio_step: config.ratio_step,
-            _pad1: 0.0,
+            _pad0: 0,
             food_source_center: config.food_source_center,
             food_source_radius: config.food_source_radius,
-            _pad2: 0.0,
+            _pad1: 0,
             colony_center: config.colony_center,
             colony_radius: config.colony_radius,
-            window_width: config.window_width,
-            window_height: config.window_height,
-            _pad3: 0.0,
+            _pad2: 0,
+            _pad3: 0,
+            _pad4: 0,
         }
     }
 }

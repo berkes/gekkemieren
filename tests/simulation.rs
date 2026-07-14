@@ -23,11 +23,11 @@ fn config() -> Config {
         ratio_step: 0.0,  // not used in test
         food_source_center: [0.9, 0.0],
         food_source_radius: 0.001,
+        colony_center: [0.5, 0.5],
+        colony_radius: 0.01,
         window_width: 64, // test grid size
         window_height: 64,
         palette: Palette::Pastel,
-        colony_center: [0.5, 0.5],
-        colony_radius: 0.01,
     }
 }
 
