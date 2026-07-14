@@ -141,27 +141,17 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     var ant = ants[index];
+    var speed = select(1.0, 0.7, ant.carries_food == 1u);
 
     // Increment lifetime and check for death
-    if random(vec3<f32>(ant.position, f32(index)), 0.0, 1.0) < 0.8 {
-        ant.lifetime += 1u;
-    }
+    ant.lifetime += 1u;
 
-    if ant.lifetime >= MAX_LIFETIME {
+    if ant.carries_food == 0u &&f32(ant.lifetime) >= (f32(MAX_LIFETIME) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
         // Reset ant: teleport to colony, drop food, keep direction and type
-        // Use random position within colony bounds
-        // let offset_x = random(vec3<f32>(ant.position, f32(index)), -0.5, 0.5) * 0.02;
-        // let offset_y = random(vec3<f32>(ant.position, f32(index + 1u)), -0.5, 0.5) * 0.02;
         ant.position = config.colony_center;
         ant.carries_food = 0u;
         ant.lifetime = 0u;
     }
-
-    let next = ant.position + ant.direction;
-    if next.x < 0.0 || next.x > 1.0 { ant.direction.x = -ant.direction.x; }
-    if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
-
-    ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
 
     if ant.carries_food == 1u && in_colony(ant.position) {
         ant.carries_food = 0u;
@@ -206,8 +196,9 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
             ant.direction = rotate(ant.direction, config.sensor_angle);
         } else if right_sample > left_sample {
             ant.direction = rotate(ant.direction, -config.sensor_angle);
-        } else if ant.ant_type == 0u && right_sample <= 0.01 && left_sample <= 0.01 {
-            ant.direction = -ant.direction;
+        } else if ant.ant_type == 0u && right_sample <= 0.001 && left_sample <= 0.001 {
+            // ant.direction = -ant.direction;
+            speed = 0.001;
         }
     }
 
@@ -228,6 +219,11 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
     }
 
+    let next = ant.position + (ant.direction * speed);
+    if next.x < 0.0 || next.x > 1.0 { ant.direction.x = -ant.direction.x; }
+    if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
+
+    ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
     ants[index] = ant;
 
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
