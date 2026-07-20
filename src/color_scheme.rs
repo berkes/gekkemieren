@@ -30,6 +30,8 @@ pub enum Palette {
     Pastel,
     Light,
     Debug,
+    DebugHoming,
+    DebugFood
 }
 
 /// Convert sRGB value (0.0-1.0) to linear RGB
@@ -91,6 +93,22 @@ impl ColorScheme {
                 food_pheromone: [1.0, 1.0, 0.0, 1.0],
                 food: [0.0, 0.0, 1.0, 1.0],
             },
+            Palette::DebugHoming => Self {
+                background: color_from_hex("#111111"),
+                forager: color_from_hex("#eeffee"),
+                scout: color_from_hex("#ffeeee"),
+                homing_pheromone: color_from_hex("#ff3333"),
+                food_pheromone: color_from_hex("#111111"),
+                food: color_from_hex("#eeeeff"),
+            },
+            Palette::DebugFood => Self {
+                background: color_from_hex("#111111"),
+                forager: color_from_hex("#33ffee"),
+                scout: color_from_hex("#ffee33"),
+                homing_pheromone: color_from_hex("#111111"),
+                food_pheromone: color_from_hex("#ff3333"),
+                food: color_from_hex("#eeeeff"),
+            }
         }
     }
 }
