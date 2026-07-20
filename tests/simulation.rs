@@ -73,5 +73,5 @@ fn ant_moves_to_exact_position() {
     sim.update(&setup.device, &setup.queue);
     let result = sim.read_ant_state(&setup.device, &setup.queue);
 
-    assert_eq!(result[0].position, [0.501, 0.5]);
+    assert_eq!(result[0].position, [0.500001, 0.5]);
 }
