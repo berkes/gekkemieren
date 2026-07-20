@@ -130,7 +130,7 @@ fn deposit_pheromone_pixel(cell_x: u32, cell_y: u32, carries_food: u32) {
 }
 
 // Maximum lifetime in ticks before an ant "dies" and respawns at colony
-const MAX_LIFETIME: u32 = 500u;
+const MAX_LIFETIME: u32 = 900u;
 
 @compute
 @workgroup_size(64)
@@ -196,7 +196,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
             ant.direction = rotate(ant.direction, config.sensor_angle);
         } else if right_sample > left_sample {
             ant.direction = rotate(ant.direction, -config.sensor_angle);
-        } else if ant.ant_type == 0u && right_sample <= 0.001 && left_sample <= 0.001 {
+        } else if ant.ant_type == 0u && right_sample <= 0.01 && left_sample <= 0.01 {
             // ant.direction = -ant.direction;
             speed = 0.001;
         }
