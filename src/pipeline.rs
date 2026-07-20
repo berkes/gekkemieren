@@ -34,6 +34,7 @@ fn create_pheromone_decay_bind_group(
     homing_pheromone_buffer: &wgpu::Buffer,
     food_pheromone_buffer: &wgpu::Buffer,
     config_buffer: &wgpu::Buffer,
+    grid_info_buffer: &wgpu::Buffer,
 ) -> wgpu::BindGroup {
     device.create_bind_group(&wgpu::BindGroupDescriptor {
         label: Some("pheromone_decay_bind_group"),
@@ -50,6 +51,10 @@ fn create_pheromone_decay_bind_group(
             wgpu::BindGroupEntry {
                 binding: 2,
                 resource: config_buffer.as_entire_binding(),
+            },
+            wgpu::BindGroupEntry {
+                binding: 3,
+                resource: grid_info_buffer.as_entire_binding(),
             },
         ],
     })
@@ -261,6 +266,7 @@ impl SimulationPipeline {
             &homing_pheromone_buffer,
             &food_pheromone_buffer,
             &config_buffer,
+            &grid_info_buffer,
         );
 
         Self {
