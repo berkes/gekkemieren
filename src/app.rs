@@ -29,6 +29,7 @@ pub struct State {
     frame_count: u32,
     log_timer: std::time::Instant,
     spawner: RandomSpawner,
+    food_spawner: FoodSpawner,
 }
 
 impl State {
@@ -44,9 +45,13 @@ impl State {
             config.base_speed,
         );
 
-        // Initialize food spawner and spawn food near a random edge
-        let mut food_spawner = FoodSpawner::new(wgpu_setup.config.width, wgpu_setup.config.height);
-        food_spawner.spawn_food_circle(config.food_source_center, config.food_source_radius); // Spawn a circle with radius 0.01 (1% of screen)
+        // Initialize food spawner with initial food circle
+        let mut food_spawner = FoodSpawner::new(
+            wgpu_setup.config.width,
+            wgpu_setup.config.height,
+            config.food_source_radius,
+        );
+        food_spawner.spawn_food_circle(config.food_source_center);
 
         let simulation = SimulationPipeline::new(
             &wgpu_setup.device,
@@ -79,8 +84,8 @@ impl State {
             config,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
-
             spawner,
+            food_spawner,
         })
     }
 
@@ -114,12 +119,21 @@ impl State {
 
     fn render(&mut self) -> anyhow::Result<()> {
         self.window.request_redraw();
-        self.frame_count += 1;
-        if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
-            log::debug!("fps: {}", self.frame_count,);
-            log::debug!("ratio: {:.2}", self.config.scout_ratio);
-            self.frame_count = 0;
-            self.log_timer = std::time::Instant::now();
+        // Every 120 frames, sync state from GPU to get accurate counts
+        if self.frame_count.is_multiple_of(120) {
+            self.sync_state();
+        }
+
+        // Try to spawn new food sources at intervals
+        self.food_spawner.try_spawn();
+
+        // Update GPU food buffer if food grid changed
+        if self.food_spawner.food_changed() {
+            self.wgpu_setup.queue.write_buffer(
+                &self.simulation.food_buffer,
+                0,
+                bytemuck::cast_slice(&self.food_spawner.food_grid.data),
+            );
         }
 
         let output = match self.wgpu_setup.surface.get_current_texture() {
@@ -186,7 +200,32 @@ impl State {
             .submit(std::iter::once(encoder.finish()));
         output.present();
 
+        self.frame_count += 1;
+        if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
+
+            let ants = self.simulation.read_ant_state(
+                &self.wgpu_setup.device,
+                &self.wgpu_setup.queue,
+            );
+            let n_ants_carrying_food = ants.iter().filter(|a| a.carries_food != 0).count();
+
+            log::debug!("fps: {}", self.frame_count,);
+            log::debug!("ratio: {:.2}", self.config.scout_ratio);
+            log::debug!("food_available: {}, ants_carrying_food: {}", self.food_spawner.food_count(), n_ants_carrying_food);
+            self.frame_count = 0;
+            self.log_timer = std::time::Instant::now();
+        }
+
         Ok(())
+    }
+
+    fn sync_state(&mut self) {
+        // Read food state from GPU to get accurate count including ant consumption
+        let food_data = self
+            .simulation
+            .read_food_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+
+        self.food_spawner.update_from_gpu(&food_data);
     }
 }
 

@@ -32,12 +32,20 @@ struct GpuConfig {
     _pad4: u32,
 }
 
+struct SimulationInfo {
+    frame_counter: u32,
+    _pad0: u32,
+    _pad1: u32,
+    _pad2: u32,
+}
+
 @group(0) @binding(0) var<storage, read_write> ants: array<Ant>;
 @group(0) @binding(1) var<storage, read_write> homing_pheromone_grid: array<f32>;
 @group(0) @binding(2) var<storage, read_write> food_pheromone_grid: array<f32>;
 @group(0) @binding(3) var<uniform> grid_info: GridInfo;
 @group(0) @binding(4) var<uniform> config: GpuConfig;
 @group(0) @binding(5) var<storage, read_write> food_grid: array<atomic<u32>>;
+@group(0) @binding(6) var<uniform> simulation_info: SimulationInfo;
 
 // Hash constants - primes used for pseudo-random number generation
 const HASH_COORD_SCALE: vec2<f32> = vec2<f32>(127.1, 311.7);
@@ -130,7 +138,7 @@ fn deposit_pheromone_pixel(cell_x: u32, cell_y: u32, carries_food: u32) {
 }
 
 // Maximum lifetime in ticks before an ant "dies" and respawns at colony
-const MAX_LIFETIME: u32 = 900u;
+const MAX_LIFETIME: u32 = 2400u;
 
 @compute
 @workgroup_size(64)
@@ -146,7 +154,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Increment lifetime and check for death
     ant.lifetime += 1u;
 
-    if ant.carries_food == 0u &&f32(ant.lifetime) >= (f32(MAX_LIFETIME) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
+    if f32(ant.lifetime) >= (f32(MAX_LIFETIME) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
         // Reset ant: teleport to colony, drop food, keep direction and type
         ant.position = config.colony_center;
         ant.carries_food = 0u;
@@ -187,7 +195,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     }
 
     // Select which pheromone grid to sample based on whether ant carries food
-    if (!moved) {
+    if (!moved && ant.ant_type == 0u) {
         let grid_selector = ant.carries_food;
         let left_sample = sample_pheromone_area(left_pos, grid_selector);
         let right_sample = sample_pheromone_area(right_pos, grid_selector);
@@ -196,8 +204,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
             ant.direction = rotate(ant.direction, config.sensor_angle);
         } else if right_sample > left_sample {
             ant.direction = rotate(ant.direction, -config.sensor_angle);
-        } else if ant.ant_type == 0u && right_sample <= 0.01 && left_sample <= 0.01 {
-            // ant.direction = -ant.direction;
+        } else if right_sample <= 0.01 && left_sample <= 0.01 {
             speed = 0.001;
         }
     }
@@ -215,7 +222,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
         let prev_food = atomicExchange(&food_grid[food_idx], 0u);
         if prev_food == 1u {
             ant.carries_food = 1u;
-            ant.direction = -ant.direction;
+            // ant.direction = -ant.direction;
         }
     }
 
@@ -229,5 +236,6 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);
     let cell_y = clamp(u32(ant.position.y * f32(grid_info.height)), 0u, grid_info.height - 1u);
 
+    let void = simulation_info.frame_counter;
     deposit_pheromone_pixel(cell_x, cell_y, ant.carries_food);
 }

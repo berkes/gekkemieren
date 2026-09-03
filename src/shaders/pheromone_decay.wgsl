@@ -33,40 +33,28 @@ struct GridInfo {
 @workgroup_size(64)
 fn pheromone_decay_main(@builtin(global_invocation_id) id: vec3<u32>) {
     let idx = id.x;
-
-    // let old_val = homing_pheromone_grid[idx];
-    // let new_val = clamp(
-    //         old_val * (1.0 - config.decay_ratio),
-    //         0.0,
-    //         1.0
-    //     );
-    // let difference = old_val - new_val;
-    // homing_pheromone_grid[idx] = new_val;
-
-    // if idx + 1 < arrayLength(&homing_pheromone_grid) {
-    //   homing_pheromone_grid[idx + 1] += difference * 0.24;
-    // }
-    // if idx - 1 >= 0 {
-    //   homing_pheromone_grid[idx - 1] += difference * 0.24;
-    // }
-    // if (idx + grid_info.width) <= arrayLength(&homing_pheromone_grid) {
-    //   homing_pheromone_grid[idx + grid_info.width] += difference * 0.24;
-    // }
-    // if (idx - grid_info.width) >= 0 {
-    //   homing_pheromone_grid[idx - grid_info.width] += difference * 0.24;
-    // }
-
-    // food_pheromone_grid[idx] = clamp(
-    //     food_pheromone_grid[idx] * (1.0 - config.decay_ratio),
-    //     0.0,
-    //     1.0
-    // );
     diffuse_homing(idx);
     diffuse_food(idx);
+    // decay_food(idx);
+    // decay_homing(idx);
 }
 
 fn in_bounds(idx: u32, length: u32) -> bool {
     return idx < length && idx >= 0;
+}
+
+fn decay_food(idx: u32) {
+    if (grid_info.width == 0 || grid_info.height == 0) {
+        return;
+    }
+    food_pheromone_grid[idx] = clamp(food_pheromone_grid[idx] * (1.0 - config.decay_ratio), 0.0, 1.0);
+}
+
+fn decay_homing(idx: u32) {
+    if (grid_info.width == 0 || grid_info.height == 0) {
+        return;
+    }
+    homing_pheromone_grid[idx] = clamp(homing_pheromone_grid[idx] * (1.0 - config.decay_ratio), 0.0, 1.0);
 }
 
 fn diffuse_homing(idx: u32) {

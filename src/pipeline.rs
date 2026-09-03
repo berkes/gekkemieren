@@ -2,7 +2,7 @@ use wgpu::util::DeviceExt;
 
 use crate::ant::Ant;
 use crate::color_scheme::ColorScheme;
-use crate::config::GpuConfig;
+use crate::config::{GpuConfig, SimulationInfo};
 use crate::pheromone::GridInfo;
 
 fn create_pheromone_buffer(
@@ -24,7 +24,9 @@ fn create_food_buffer(device: &wgpu::Device, width: u32, height: u32) -> wgpu::B
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: Some("food_buffer"),
         contents: bytemuck::cast_slice(&data),
-        usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::STORAGE
+            | wgpu::BufferUsages::COPY_DST
+            | wgpu::BufferUsages::COPY_SRC,
     })
 }
 
@@ -163,10 +165,12 @@ pub struct SimulationPipeline {
     pub food_buffer: wgpu::Buffer,
     pub grid_info_buffer: wgpu::Buffer,
     pub config_buffer: wgpu::Buffer,
+    pub simulation_info_buffer: wgpu::Buffer,
 
     pub ant_count: usize,
     pub grid_width: u32,
     pub grid_height: u32,
+    pub frame_counter: u32,
 }
 
 impl SimulationPipeline {
@@ -204,6 +208,12 @@ impl SimulationPipeline {
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
             contents: bytemuck::bytes_of(&config),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+        let simulation_info = SimulationInfo::new();
+        let simulation_info_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("simulation_info_buffer"),
+            contents: bytemuck::bytes_of(&simulation_info),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
@@ -246,6 +256,10 @@ impl SimulationPipeline {
                     binding: 5,
                     resource: food_buffer.as_entire_binding(),
                 },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: simulation_info_buffer.as_entire_binding(),
+                },
             ],
         });
 
@@ -280,14 +294,26 @@ impl SimulationPipeline {
             food_buffer,
             grid_info_buffer,
             config_buffer,
+            simulation_info_buffer,
             ant_count,
             grid_width: width,
             grid_height: height,
+            frame_counter: 0,
         }
     }
 
     /// Dispatches one simulation tick: pheromone decay → movement.
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        // Increment frame counter and update simulation info buffer
+        self.frame_counter += 1;
+        let simulation_info = SimulationInfo {
+            frame_counter: self.frame_counter,
+            _pad0: 0,
+            _pad1: 0,
+            _pad2: 0,
+        };
+        queue.write_buffer(&self.simulation_info_buffer, 0, bytemuck::bytes_of(&simulation_info));
+
         let ant_count = self.ant_count as u32;
         let pheromone_count = self.grid_width * self.grid_height;
         let mut encoder = device.create_command_encoder(&Default::default());
@@ -338,22 +364,18 @@ impl SimulationPipeline {
         result
     }
 
-    /// Copies the food pheromone buffer back to CPU. Used in tests to inspect pheromone state.
-    pub fn read_food_pheromone_state(
-        &self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> Vec<u32> {
+    /// Copies the food buffer back to CPU. Used to track food consumption by ants.
+    pub fn read_food_state(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> Vec<u32> {
         let size = (self.grid_width * self.grid_height * std::mem::size_of::<u32>() as u32) as u64;
         let staging = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("food_pheromone_staging"),
+            label: Some("food_staging"),
             size,
             usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
             mapped_at_creation: false,
         });
 
         let mut encoder = device.create_command_encoder(&Default::default());
-        encoder.copy_buffer_to_buffer(&self.food_pheromone_buffer, 0, &staging, 0, size);
+        encoder.copy_buffer_to_buffer(&self.food_buffer, 0, &staging, 0, size);
         queue.submit([encoder.finish()]);
 
         let slice = staging.slice(..);

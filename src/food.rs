@@ -52,6 +52,10 @@ impl FoodGrid {
         }
     }
 
+    pub fn food_count(&self) -> usize {
+        self.data.iter().sum::<u32>() as usize
+    }
+
     /// Fill a circle with food.
     /// Center is in normalized coordinates [0, 1], radius is in normalized coordinates.
     pub fn fill_circle(&mut self, food: FoodCircle) {
@@ -92,23 +96,51 @@ impl FoodGrid {
 }
 
 /// Food spawner that creates initial food sources.
-/// For now, spawns a circle of food near a random edge.
+/// Spawns circles of food near random edges at regular intervals.
 #[derive(Debug)]
 pub struct FoodSpawner {
     pub food_grid: FoodGrid,
+    pub radius: f32,
+    pub spawn_interval: std::time::Duration,
+    last_spawn_time: std::time::Instant,
+    food_changed: bool,
 }
 
 impl FoodSpawner {
     /// Create a new food spawner with an empty grid.
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32, radius: f32) -> Self {
         Self {
             food_grid: FoodGrid::new(width, height),
+            radius,
+            spawn_interval: std::time::Duration::from_secs(300),
+            last_spawn_time: std::time::Instant::now(),
+            food_changed: true,
         }
     }
 
-    pub fn spawn_food_circle(&mut self, center: [f32; 2], radius: f32) {
-        let food = FoodCircle { center, radius };
+    /// Create a new food spawner with custom settings.
+    pub fn with_settings(
+        width: u32,
+        height: u32,
+        radius: f32,
+        spawn_interval: std::time::Duration,
+    ) -> Self {
+        Self {
+            food_grid: FoodGrid::new(width, height),
+            radius,
+            spawn_interval,
+            last_spawn_time: std::time::Instant::now(),
+            food_changed: true,
+        }
+    }
+
+    pub fn spawn_food_circle(&mut self, center: [f32; 2]) {
+        let food = FoodCircle {
+            center,
+            radius: self.radius,
+        };
         self.food_grid.fill_circle(food);
+        self.food_changed = true;
     }
 
     /// Spawn food as a circle near a random edge.
@@ -119,30 +151,61 @@ impl FoodSpawner {
 
         // Pick a random edge: 0 = top, 1 = right, 2 = bottom, 3 = left
         let edge: u32 = (rng.random::<f32>() * 4.0).floor() as u32;
+        let offset = rng.random::<f32>() * 0.4 - 0.05;
 
         let center = match edge {
             0 => {
                 // Top edge
                 let x: f32 = rng.random::<f32>();
-                [x, radius + 0.01] // Slightly offset from edge
+                [x, radius + offset]
             }
             1 => {
                 // Right edge
                 let y: f32 = rng.random::<f32>();
-                [1.0 - radius - 0.01, y]
+                [1.0 - radius - offset, y]
             }
             2 => {
                 // Bottom edge
                 let x: f32 = rng.random::<f32>();
-                [x, 1.0 - radius - 0.01]
+                [x, 1.0 - radius - offset]
             }
             3 => {
                 // Left edge
                 let y: f32 = rng.random::<f32>();
-                [radius + 0.01, y]
+                [radius + offset, y]
             }
             _ => [0.5, 0.5],
         };
         FoodCircle { center, radius }
+    }
+
+    /// Check if we are almost out of food and if so, spawn new
+    /// Returns true if a new food source was spawned.
+    pub fn try_spawn(&mut self) -> bool {
+        if self.food_count() > 10 {
+            return false;
+        }
+
+        let food_circle = self.random_food_circle(self.radius);
+        self.spawn_food_circle(food_circle.center);
+        self.last_spawn_time = std::time::Instant::now();
+        true
+    }
+
+    /// Check if food grid has changed and reset the flag.
+    pub fn food_changed(&mut self) -> bool {
+        let changed = self.food_changed;
+        self.food_changed = false;
+        changed
+    }
+
+    pub(crate) fn food_count(&self) -> usize {
+        self.food_grid.food_count()
+    }
+
+    /// Update the CPU-side food grid from GPU data.
+    /// This syncs the CPU copy with changes made by ants on the GPU.
+    pub fn update_from_gpu(&mut self, gpu_data: &[u32]) {
+        self.food_grid.data.copy_from_slice(gpu_data);
     }
 }

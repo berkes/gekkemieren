@@ -73,6 +73,25 @@ pub struct GpuConfig {
     pub _pad4: u32,
 }
 
+/// GPU-compatible simulation state struct.
+/// Holds runtime information like frame counter that changes each frame.
+/// Must be #[repr(C)] and Pod/Zeroable for GPU buffer compatibility.
+/// Must match the `SimulationInfo` struct in WGSL shaders.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable, Default)]
+pub struct SimulationInfo {
+    pub frame_counter: u32,
+    pub _pad0: u32,
+    pub _pad1: u32,
+    pub _pad2: u32,
+}
+
+impl SimulationInfo {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 impl From<&Config> for GpuConfig {
     fn from(config: &Config) -> Self {
         Self {

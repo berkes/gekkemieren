@@ -31,7 +31,7 @@ pub enum Palette {
     Light,
     Debug,
     DebugHoming,
-    DebugFood
+    DebugFood,
 }
 
 /// Convert sRGB value (0.0-1.0) to linear RGB
@@ -108,7 +108,7 @@ impl ColorScheme {
                 homing_pheromone: color_from_hex("#111111"),
                 food_pheromone: color_from_hex("#ff3333"),
                 food: color_from_hex("#eeeeff"),
-            }
+            },
         }
     }
 }
