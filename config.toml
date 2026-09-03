@@ -1,20 +1,21 @@
 # Ant Simulation Configuration
 
 # Pheromone settings
-decay_ratio = 0.005       # Ratio to decay each tick
-deposit_ratio = 0.25      # Ratio to deposit each tick
+decay_ratio = 0.004       # Ratio to decay each tick
+deposit_ratio = 0.04      # Ratio to deposit each tick
 
 # Ant movement randomness
 forager_randomness = 0.05   # Randomness factor for forager ants
 scout_randomness = 0.25     # Randomness factor for scout ants
 
 # Ant sensor settings (for pheromone following)
-sensor_distance = 0.006   # Distance from ant to sense pheromones
+sensor_distance = 0.012   # Distance from ant to sense pheromones
 sensor_angle = 0.524      # ~30 degrees - angle offset for sensors
 
 # Population settings
-n_ants = 1000                           # Number of ants in the simulation
+n_ants = 5000                           # Number of ants in the simulation
 base_speed = 0.0015                      # Base movement speed of ants
+ant_lifetime = 10000                     # Lifetime of ants in ticks
 
 # Scout/forager ratio
 scout_ratio = 0.1       # Initial ratio of scout ants (0.0 to 1.0)
@@ -22,7 +23,7 @@ ratio_step = 0.05        # Step size for adjusting ratio with arrow keys
 
 # Food settings
 food_source_center = [0.9, 0.5] # x, y Position of the colony x = 0 = left, x = 1 = right, y = 0 = top, y = 1 = bottom
-food_source_radius = 0.02 # Radius of the food source in units, 1 = full screen width
+food_source_radius = 0.005 # Radius of the food source in units, 1 = full screen width
 
 # Colony
 colony_center = [0.5, 0.5] # x, y Position of the colony x = 0 = left, x = 1 = right, y = 0 = top, y = 1 = bottom

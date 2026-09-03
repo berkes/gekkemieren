@@ -21,7 +21,7 @@ struct GpuConfig {
     sensor_distance: f32,
     sensor_angle: f32,
     scout_ratio: f32,
-    _pad0: u32,
+    ant_lifetime: u32,
     food_source_center: vec2<f32>,
     food_source_radius: f32,
     _pad1: u32,
@@ -137,9 +137,6 @@ fn deposit_pheromone_pixel(cell_x: u32, cell_y: u32, carries_food: u32) {
     }
 }
 
-// Maximum lifetime in ticks before an ant "dies" and respawns at colony
-const MAX_LIFETIME: u32 = 2400u;
-
 @compute
 @workgroup_size(64)
 fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
@@ -154,7 +151,7 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Increment lifetime and check for death
     ant.lifetime += 1u;
 
-    if f32(ant.lifetime) >= (f32(MAX_LIFETIME) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
+    if f32(ant.lifetime) >= (f32(config.ant_lifetime) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
         // Reset ant: teleport to colony, drop food, keep direction and type
         ant.position = config.colony_center;
         ant.carries_food = 0u;

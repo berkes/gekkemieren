@@ -18,6 +18,7 @@ fn config() -> Config {
         sensor_distance: 0.03,
         sensor_angle: 0.5,
         n_ants: 0,        // not used in test
+        ant_lifetime: 0,  // not used in test
         base_speed: 0.0,  // not used in test
         scout_ratio: 0.0, // not used in test
         ratio_step: 0.0,  // not used in test
