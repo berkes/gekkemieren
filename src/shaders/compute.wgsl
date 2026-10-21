@@ -24,7 +24,7 @@ struct GpuConfig {
     ant_lifetime: u32,
     food_source_center: vec2<f32>,
     food_source_radius: f32,
-    _pad1: u32,
+    diffusion_ratio: f32,
     colony_center: vec2<f32>,
     colony_radius: f32,
     _pad2: u32,

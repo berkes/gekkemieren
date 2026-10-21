@@ -30,37 +30,47 @@ fn create_food_buffer(device: &wgpu::Device, width: u32, height: u32) -> wgpu::B
     })
 }
 
-fn create_pheromone_decay_bind_group(
-    device: &wgpu::Device,
-    pipeline: &wgpu::ComputePipeline,
-    homing_pheromone_buffer: &wgpu::Buffer,
-    food_pheromone_buffer: &wgpu::Buffer,
-    config_buffer: &wgpu::Buffer,
-    grid_info_buffer: &wgpu::Buffer,
-) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("pheromone_decay_bind_group"),
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: homing_pheromone_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: food_pheromone_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: config_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 3,
-                resource: grid_info_buffer.as_entire_binding(),
-            },
-        ],
-    })
-}
+// fn create_pheromone_decay_bind_group__faail(
+//     device: &wgpu::Device,
+//     pipeline: &wgpu::ComputePipeline,
+//     homing_pheromone_buffer: &wgpu::Buffer,
+//     homing_pheromone_buffer_next: &wgpu::Buffer,
+//     food_pheromone_buffer: &wgpu::Buffer,
+//     food_pheromone_buffer_next: &wgpu::Buffer,
+//     config_buffer: &wgpu::Buffer,
+//     grid_info_buffer: &wgpu::Buffer,
+// ) -> wgpu::BindGroup {
+//     device.create_bind_group(&wgpu::BindGroupDescriptor {
+//         label: Some("pheromone_decay_bind_group"),
+//         layout: &pipeline.get_bind_group_layout(0),
+//         entries: &[
+//             wgpu::BindGroupEntry {
+//                 binding: 0,
+//                 resource: homing_pheromone_buffer.as_entire_binding(),
+//             },
+//             wgpu::BindGroupEntry {
+//                 binding: 1,
+//                 resource: homing_pheromone_buffer_next.as_entire_binding(),
+//             },
+//             wgpu::BindGroupEntry {
+//                 binding: 2,
+//                 resource: food_pheromone_buffer_a.as_entire_binding(),
+//             },
+//             wgpu::BindGroupEntry {
+//                 binding: 3,
+//                 resource: food_pheromone_buffer_b.as_entire_binding(),
+//             },
+//             wgpu::BindGroupEntry {
+//                 binding: 4,
+//                 resource: config_buffer.as_entire_binding(),
+//             },
+//             wgpu::BindGroupEntry {
+//                 binding: 5,
+//                 resource: grid_info_buffer.as_entire_binding(),
+//             },
+//         ],
+//     })
+// }
 
 fn create_pheromone_render_bind_group(
     device: &wgpu::Device,
@@ -155,13 +165,13 @@ fn create_food_render_bind_group(
 #[derive(Debug)]
 pub struct SimulationPipeline {
     compute_pipeline: wgpu::ComputePipeline,
-    compute_bind_group: wgpu::BindGroup,
     pheromone_decay_pipeline: wgpu::ComputePipeline,
-    pheromone_decay_bind_group: wgpu::BindGroup,
 
     pub ant_buffer: wgpu::Buffer,
     pub homing_pheromone_buffer: wgpu::Buffer,
+    pub homing_pheromone_buffer_next: wgpu::Buffer,
     pub food_pheromone_buffer: wgpu::Buffer,
+    pub food_pheromone_buffer_next: wgpu::Buffer,
     pub food_buffer: wgpu::Buffer,
     pub grid_info_buffer: wgpu::Buffer,
     pub config_buffer: wgpu::Buffer,
@@ -202,8 +212,12 @@ impl SimulationPipeline {
         });
         let homing_pheromone_buffer =
             create_pheromone_buffer(device, width, height, "homing_pheromone_buffer");
+        let homing_pheromone_buffer_next =
+            create_pheromone_buffer(device, width, height, "homing_pheromone_buffer_next");
         let food_pheromone_buffer =
             create_pheromone_buffer(device, width, height, "food_pheromone_buffer");
+        let food_pheromone_buffer_next =
+            create_pheromone_buffer(device, width, height, "food_pheromone_buffer_next");
         let food_buffer = create_food_buffer(device, width, height);
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
@@ -228,41 +242,6 @@ impl SimulationPipeline {
             compilation_options: Default::default(),
             cache: Default::default(),
         });
-        let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("compute_bind_group"),
-            layout: &compute_pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: ant_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: homing_pheromone_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: food_pheromone_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: grid_info_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 4,
-                    resource: config_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 5,
-                    resource: food_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 6,
-                    resource: simulation_info_buffer.as_entire_binding(),
-                },
-            ],
-        });
-
         let pheromone_decay_shader =
             device.create_shader_module(wgpu::include_wgsl!("shaders/pheromone_decay.wgsl"));
         let pheromone_decay_pipeline =
@@ -274,23 +253,15 @@ impl SimulationPipeline {
                 compilation_options: Default::default(),
                 cache: Default::default(),
             });
-        let pheromone_decay_bind_group = create_pheromone_decay_bind_group(
-            device,
-            &pheromone_decay_pipeline,
-            &homing_pheromone_buffer,
-            &food_pheromone_buffer,
-            &config_buffer,
-            &grid_info_buffer,
-        );
 
         Self {
             compute_pipeline,
-            compute_bind_group,
             pheromone_decay_pipeline,
-            pheromone_decay_bind_group,
             ant_buffer,
             homing_pheromone_buffer,
+            homing_pheromone_buffer_next,
             food_pheromone_buffer,
+            food_pheromone_buffer_next,
             food_buffer,
             grid_info_buffer,
             config_buffer,
@@ -302,7 +273,7 @@ impl SimulationPipeline {
         }
     }
 
-    /// Dispatches one simulation tick: pheromone decay → movement.
+    /// Dispatches one simulation tick: movement → pheromone decay → buffer swap.
     pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         // Increment frame counter and update simulation info buffer
         self.frame_counter += 1;
@@ -312,26 +283,106 @@ impl SimulationPipeline {
             _pad1: 0,
             _pad2: 0,
         };
-        queue.write_buffer(&self.simulation_info_buffer, 0, bytemuck::bytes_of(&simulation_info));
+        queue.write_buffer(
+            &self.simulation_info_buffer,
+            0,
+            bytemuck::bytes_of(&simulation_info),
+        );
+
+        // Both bind groups are recreated each frame so they always follow the
+        // buffer swap: movement and decay read the current buffers, decay
+        // writes into the next ones.
+        let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("compute_bind_group"),
+            layout: &self.compute_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.ant_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.homing_pheromone_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.food_pheromone_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.grid_info_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.config_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.food_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.simulation_info_buffer.as_entire_binding(),
+                },
+            ],
+        });
+        let decay_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("pheromone_decay_bind_group"),
+            layout: &self.pheromone_decay_pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.homing_pheromone_buffer.as_entire_binding(),
+                }, // Read
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: self.homing_pheromone_buffer_next.as_entire_binding(),
+                }, // Write
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: self.food_pheromone_buffer.as_entire_binding(),
+                }, // Read
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: self.food_pheromone_buffer_next.as_entire_binding(),
+                }, // Write
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: self.config_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: self.grid_info_buffer.as_entire_binding(),
+                },
+            ],
+        });
 
         let ant_count = self.ant_count as u32;
         let pheromone_count = self.grid_width * self.grid_height;
         let mut encoder = device.create_command_encoder(&Default::default());
-
-        {
-            let mut pass = encoder.begin_compute_pass(&Default::default());
-            pass.set_pipeline(&self.pheromone_decay_pipeline);
-            pass.set_bind_group(0, &self.pheromone_decay_bind_group, &[]);
-            pass.dispatch_workgroups(pheromone_count.div_ceil(64), 1, 1);
-        }
         {
             let mut pass = encoder.begin_compute_pass(&Default::default());
             pass.set_pipeline(&self.compute_pipeline);
-            pass.set_bind_group(0, &self.compute_bind_group, &[]);
+            pass.set_bind_group(0, &compute_bind_group, &[]);
             pass.dispatch_workgroups(ant_count.div_ceil(64), 1, 1);
+        }
+        {
+            let mut pass = encoder.begin_compute_pass(&Default::default());
+            pass.set_pipeline(&self.pheromone_decay_pipeline);
+            pass.set_bind_group(0, &decay_bind_group, &[]);
+            pass.dispatch_workgroups(pheromone_count.div_ceil(64), 1, 1);
         }
 
         queue.submit([encoder.finish()]);
+
+        std::mem::swap(
+            &mut self.homing_pheromone_buffer,
+            &mut self.homing_pheromone_buffer_next,
+        );
+        std::mem::swap(
+            &mut self.food_pheromone_buffer,
+            &mut self.food_pheromone_buffer_next,
+        );
     }
 
     /// Copies the ant buffer back to CPU. Used in tests to inspect simulation state.
@@ -615,6 +666,20 @@ impl RenderPipeline {
             b: scheme.background[2] as f64,
             a: scheme.background[3] as f64,
         };
+    }
+
+    /// Rebinds the pheromone render pass to the simulation's current
+    /// pheromone buffers. Must be called after every `SimulationPipeline::update`
+    /// because the simulation swaps its buffers each tick.
+    pub fn rebind_pheromones(&mut self, device: &wgpu::Device, simulation: &SimulationPipeline) {
+        self.pheromone_render_bind_group = create_pheromone_render_bind_group(
+            device,
+            &self.pheromone_render_pipeline,
+            &simulation.homing_pheromone_buffer,
+            &simulation.food_pheromone_buffer,
+            &simulation.grid_info_buffer,
+            &self.color_scheme_buffer,
+        );
     }
 
     pub fn draw<'pass>(&'pass self, render_pass: &mut wgpu::RenderPass<'pass>, ant_count: u32) {

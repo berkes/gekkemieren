@@ -1,7 +1,8 @@
 # Ant Simulation Configuration
 
 # Pheromone settings
-decay_ratio = 0.004       # Ratio to decay each tick
+decay_ratio = 0.004       # Ratio of total pheromone removed each tick
+diffusion_ratio = 0.001   # Fraction diffused to each neighbour each tick (max 0.25, higher blurs faster)
 deposit_ratio = 0.04      # Ratio to deposit each tick
 
 # Ant movement randomness

@@ -19,6 +19,7 @@ use crate::color_scheme::Palette;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
     pub decay_ratio: f32,
+    pub diffusion_ratio: f32,
     pub deposit_ratio: f32,
     pub forager_randomness: f32,
     pub scout_randomness: f32,
@@ -66,7 +67,9 @@ pub struct GpuConfig {
     pub ant_lifetime: u32,
     pub food_source_center: [f32; 2],
     pub food_source_radius: f32,
-    pub _pad1: u32,
+    // Occupies the former _pad1 slot: keeps colony_center 8-byte aligned for
+    // WGSL, where vec2<f32> members require 8-byte alignment.
+    pub diffusion_ratio: f32,
     pub colony_center: [f32; 2],
     pub colony_radius: f32,
     pub _pad2: u32,
@@ -106,7 +109,7 @@ impl From<&Config> for GpuConfig {
             ant_lifetime: config.ant_lifetime,
             food_source_center: config.food_source_center,
             food_source_radius: config.food_source_radius,
-            _pad1: 0,
+            diffusion_ratio: config.diffusion_ratio,
             colony_center: config.colony_center,
             colony_radius: config.colony_radius,
             _pad2: 0,

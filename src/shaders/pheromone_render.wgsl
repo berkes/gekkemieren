@@ -38,8 +38,8 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let homing_strength = pow(clamp(homing_pheromone_grid[idx], 0.0, 1.0), 0.4);
     let food_strength = pow(clamp(food_pheromone_grid[idx], 0.0, 1.0), 0.4);
 
-    // // Render only the strongest pheromone, set alpha to the strength.
-    if homing_strength > 0.1 {
+    // Render only the strongest pheromone, set alpha to the strength.
+    if homing_strength > food_strength {
         return vec4<f32>(colors.homing_pheromone.rgb, homing_strength);
     } else {
         return vec4<f32>(colors.food_pheromone.rgb, food_strength);

@@ -11,6 +11,7 @@ use gekkemieren::{
 fn config() -> Config {
     Config {
         decay_ratio: 0.1,
+        diffusion_ratio: 0.0,
         deposit_ratio: 0.001,
         // Zero randomness makes movement fully deterministic: direction is
         forager_randomness: 0.0,

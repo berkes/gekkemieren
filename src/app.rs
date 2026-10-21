@@ -166,6 +166,8 @@ impl State {
 
         self.simulation
             .update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+        self.pipeline
+            .rebind_pheromones(&self.wgpu_setup.device, &self.simulation);
 
         let mut encoder =
             self.wgpu_setup
@@ -202,16 +204,18 @@ impl State {
 
         self.frame_count += 1;
         if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
-
-            let ants = self.simulation.read_ant_state(
-                &self.wgpu_setup.device,
-                &self.wgpu_setup.queue,
-            );
+            let ants = self
+                .simulation
+                .read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
             let n_ants_carrying_food = ants.iter().filter(|a| a.carries_food != 0).count();
 
             log::debug!("fps: {}", self.frame_count,);
             log::debug!("ratio: {:.2}", self.config.scout_ratio);
-            log::debug!("food_available: {}, ants_carrying_food: {}", self.food_spawner.food_count(), n_ants_carrying_food);
+            log::debug!(
+                "food_available: {}, ants_carrying_food: {}",
+                self.food_spawner.food_count(),
+                n_ants_carrying_food
+            );
             self.frame_count = 0;
             self.log_timer = std::time::Instant::now();
         }
@@ -266,6 +270,8 @@ impl State {
                 });
                 self.simulation
                     .update(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+                self.pipeline
+                    .rebind_pheromones(&self.wgpu_setup.device, &self.simulation);
                 self.pipeline
                     .draw(&mut render_pass, self.simulation.ant_count as u32);
             },
