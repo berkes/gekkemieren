@@ -21,10 +21,12 @@ pub struct Config {
     pub decay_ratio: f32,
     pub diffusion_ratio: f32,
     pub deposit_ratio: f32,
+    pub carrying_deposit_boost: f32,
     pub forager_randomness: f32,
     pub scout_randomness: f32,
     pub sensor_distance: f32,
     pub sensor_angle: f32,
+    pub compass_turn_rate: f32,
     pub n_ants: usize,
     pub ant_lifetime: u32,
     pub base_speed: f32,
@@ -72,8 +74,10 @@ pub struct GpuConfig {
     pub diffusion_ratio: f32,
     pub colony_center: [f32; 2],
     pub colony_radius: f32,
-    pub _pad2: u32,
-    pub _pad3: u32,
+    // These two occupy the former _pad2/_pad3 slots for the same alignment
+    // reason as diffusion_ratio above.
+    pub carrying_deposit_boost: f32,
+    pub compass_turn_rate: f32,
     pub _pad4: u32,
 }
 
@@ -101,10 +105,12 @@ impl From<&Config> for GpuConfig {
         Self {
             decay_ratio: config.decay_ratio,
             deposit_ratio: config.deposit_ratio,
+            carrying_deposit_boost: config.carrying_deposit_boost,
             forager_randomness: config.forager_randomness,
             scout_randomness: config.scout_randomness,
             sensor_distance: config.sensor_distance,
             sensor_angle: config.sensor_angle,
+            compass_turn_rate: config.compass_turn_rate,
             scout_ratio: config.scout_ratio,
             ant_lifetime: config.ant_lifetime,
             food_source_center: config.food_source_center,
@@ -112,8 +118,6 @@ impl From<&Config> for GpuConfig {
             diffusion_ratio: config.diffusion_ratio,
             colony_center: config.colony_center,
             colony_radius: config.colony_radius,
-            _pad2: 0,
-            _pad3: 0,
             _pad4: 0,
         }
     }

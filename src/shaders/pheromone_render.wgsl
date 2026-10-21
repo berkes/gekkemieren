@@ -14,10 +14,9 @@ struct ColorScheme {
     food:       vec4<f32>,
 }
 
-@group(0) @binding(0) var<storage, read> homing_pheromone_grid: array<f32>;
-@group(0) @binding(1) var<storage, read> food_pheromone_grid: array<f32>;
-@group(0) @binding(2) var<uniform> grid_info: GridInfo;
-@group(0) @binding(3) var<uniform> colors: ColorScheme;
+@group(0) @binding(0) var<storage, read> pheromone_grid: array<f32>;
+@group(0) @binding(1) var<uniform> grid_info: GridInfo;
+@group(0) @binding(2) var<uniform> colors: ColorScheme;
 
 const FULLSCREEN_QUAD = array<vec2<f32>, 6>(
     vec2(-1.0, -1.0), vec2( 1.0, -1.0), vec2(-1.0,  1.0),
@@ -35,13 +34,6 @@ fn fs_main(@builtin(position) pos: vec4<f32>) -> @location(0) vec4<f32> {
     let y = min(u32(pos.y), grid_info.height - 1u);
     let idx = y * grid_info.width + x;
 
-    let homing_strength = pow(clamp(homing_pheromone_grid[idx], 0.0, 1.0), 0.4);
-    let food_strength = pow(clamp(food_pheromone_grid[idx], 0.0, 1.0), 0.4);
-
-    // Render only the strongest pheromone, set alpha to the strength.
-    if homing_strength > food_strength {
-        return vec4<f32>(colors.homing_pheromone.rgb, homing_strength);
-    } else {
-        return vec4<f32>(colors.food_pheromone.rgb, food_strength);
-    }
+    let strength = pow(clamp(pheromone_grid[idx], 0.0, 1.0), 0.4);
+    return vec4<f32>(colors.homing_pheromone.rgb, strength);
 }

@@ -21,8 +21,8 @@ struct GpuConfig {
     diffusion_ratio: f32,
     colony_center: vec2<f32>,
     colony_radius: f32,
-    _pad2: u32,
-    _pad3: u32,
+    carrying_deposit_boost: f32,
+    compass_turn_rate: f32,
     _pad4: u32,
 }
 

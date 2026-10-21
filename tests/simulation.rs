@@ -13,11 +13,13 @@ fn config() -> Config {
         decay_ratio: 0.1,
         diffusion_ratio: 0.0,
         deposit_ratio: 0.001,
+        carrying_deposit_boost: 100.0,
         // Zero randomness makes movement fully deterministic: direction is
         forager_randomness: 0.0,
         scout_randomness: 0.0,
         sensor_distance: 0.03,
         sensor_angle: 0.5,
+        compass_turn_rate: 0.55,
         n_ants: 0,        // not used in test
         ant_lifetime: 0,  // not used in test
         base_speed: 0.0,  // not used in test
@@ -75,5 +77,5 @@ fn ant_moves_to_exact_position() {
     sim.update(&setup.device, &setup.queue);
     let result = sim.read_ant_state(&setup.device, &setup.queue);
 
-    assert_eq!(result[0].position, [0.500001, 0.5]);
+    assert_eq!(result[0].position, [0.5 + 0.001, 0.5]);
 }
