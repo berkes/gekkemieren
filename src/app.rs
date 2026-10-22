@@ -10,6 +10,7 @@ use winit::{
 };
 
 use crate::{
+    ant::Ant,
     color_scheme::ColorScheme,
     config::{Config, GpuConfig},
     food::FoodSpawner,
@@ -18,6 +19,11 @@ use crate::{
     spawn::{AntSpawner, Colony, RandomSpawner},
     wgpu_setup::WgpuSetup,
 };
+
+// Anti-extinction tuning, hardcoded until the experiment settles.
+const STUCK_RESCUE_FRACTION: f32 = 0.9; // rescue the colony when this share of ants is stuck
+const STUCK_LIFETIME_FRACTION: f32 = 0.6; // mirrors the death threshold floor in compute.wgsl
+const COLONY_FOOD_UNITS_PER_PIXEL: i32 = 100; // mirrors FOOD_UNITS_PER_PICKUP in compute.wgsl
 
 #[derive(Debug)]
 pub struct State {
@@ -30,6 +36,7 @@ pub struct State {
     log_timer: std::time::Instant,
     spawner: RandomSpawner,
     food_spawner: FoodSpawner,
+    rescue_armed: bool,
 }
 
 impl State {
@@ -86,6 +93,7 @@ impl State {
             log_timer: std::time::Instant::now(),
             spawner,
             food_spawner,
+            rescue_armed: true,
         })
     }
 
@@ -203,19 +211,35 @@ impl State {
         output.present();
 
         self.frame_count += 1;
-        if self.log_timer.elapsed().as_secs_f32() >= 1.0 {
+        if self.log_timer.elapsed().as_secs_f32() >= 2.0 {
             let ants = self
                 .simulation
                 .read_ant_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
             let n_ants_carrying_food = ants.iter().filter(|a| a.carries_food != 0).count();
+            let colony_food = self
+                .simulation
+                .read_colony_food(&self.wgpu_setup.device, &self.wgpu_setup.queue);
 
             log::debug!("fps: {}", self.frame_count,);
             log::debug!("ratio: {:.2}", self.config.scout_ratio);
             log::debug!(
-                "food_available: {}, ants_carrying_food: {}",
+                "food_available: {}, ants_carrying_food: {}, colony_food: {}",
                 self.food_spawner.food_count(),
-                n_ants_carrying_food
+                n_ants_carrying_food,
+                colony_food
             );
+            let starvation_threshold = (self.config.ant_lifetime as f64 * 0.5) as u32;
+            log::debug!(
+                "hungry ants: {}",
+                ants.iter()
+                    .filter(|a| a.lifetime <= starvation_threshold)
+                    .count()
+            );
+            log::debug!(
+                "dying ants: {}",
+                ants.iter().filter(|a| a.lifetime == 0).count()
+            );
+            self.try_rescue_stuck_ants(&ants, colony_food);
             self.frame_count = 0;
             self.log_timer = std::time::Instant::now();
         }
@@ -230,6 +254,51 @@ impl State {
             .read_food_state(&self.wgpu_setup.device, &self.wgpu_setup.queue);
 
         self.food_spawner.update_from_gpu(&food_data);
+
+        // Open new food sources when the colony store runs low
+        let colony_food = self
+            .simulation
+            .read_colony_food(&self.wgpu_setup.device, &self.wgpu_setup.queue);
+        self.food_spawner
+            .try_spawn_for_colony(colony_food, COLONY_FOOD_UNITS_PER_PIXEL);
+    }
+
+    /// When nearly the whole population is stuck waiting in the colony the
+    /// colony can never recover on its own: nobody is left foraging, so no
+    /// food will ever arrive. Inject food once so the crowd can eat and
+    /// resume foraging.
+    fn try_rescue_stuck_ants(&mut self, ants: &[Ant], colony_food: i32) {
+        if ants.is_empty() {
+            return;
+        }
+        let stuck_fraction =
+            ants.iter().filter(|a| self.is_stuck(a)).count() as f32 / ants.len() as f32;
+
+        if stuck_fraction >= STUCK_RESCUE_FRACTION {
+            if !self.rescue_armed {
+                return;
+            }
+            // One meal per stuck ant
+            let rescue = ants.len() as i32;
+            let new_total = colony_food + rescue;
+            self.wgpu_setup.queue.write_buffer(
+                &self.simulation.colony_food_buffer,
+                0,
+                bytemuck::bytes_of(&new_total),
+            );
+            self.rescue_armed = false;
+            log::debug!("stuck rescue: injected {} food units", rescue);
+        } else {
+            self.rescue_armed = true;
+        }
+    }
+
+    fn is_stuck(&self, ant: &Ant) -> bool {
+        let dx = ant.position[0] - self.config.colony_center[0];
+        let dy = ant.position[1] - self.config.colony_center[1];
+        let in_colony = dx * dx + dy * dy < self.config.colony_radius * self.config.colony_radius;
+        in_colony
+            && ant.lifetime as f32 >= self.config.ant_lifetime as f32 * STUCK_LIFETIME_FRACTION
     }
 }
 

@@ -124,6 +124,7 @@ pub struct SimulationPipeline {
     pub pheromone_buffer: wgpu::Buffer,
     pub pheromone_buffer_next: wgpu::Buffer,
     pub food_buffer: wgpu::Buffer,
+    pub colony_food_buffer: wgpu::Buffer,
     pub grid_info_buffer: wgpu::Buffer,
     pub config_buffer: wgpu::Buffer,
     pub simulation_info_buffer: wgpu::Buffer,
@@ -165,6 +166,13 @@ impl SimulationPipeline {
         let pheromone_buffer_next =
             create_pheromone_buffer(device, width, height, "pheromone_buffer_next");
         let food_buffer = create_food_buffer(device, width, height);
+        let colony_food_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("colony_food_buffer"),
+            contents: bytemuck::bytes_of(&0i32),
+            usage: wgpu::BufferUsages::STORAGE
+                | wgpu::BufferUsages::COPY_SRC
+                | wgpu::BufferUsages::COPY_DST,
+        });
         let config_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("config_buffer"),
             contents: bytemuck::bytes_of(&config),
@@ -207,6 +215,7 @@ impl SimulationPipeline {
             pheromone_buffer,
             pheromone_buffer_next,
             food_buffer,
+            colony_food_buffer,
             grid_info_buffer,
             config_buffer,
             simulation_info_buffer,
@@ -263,6 +272,10 @@ impl SimulationPipeline {
                 wgpu::BindGroupEntry {
                     binding: 5,
                     resource: self.simulation_info_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 6,
+                    resource: self.colony_food_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -365,6 +378,35 @@ impl SimulationPipeline {
 
         let data = slice.get_mapped_range();
         let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+        drop(data);
+        staging.unmap();
+        result
+    }
+
+    /// Copies the colony food store back to CPU. Used to log the colony economy.
+    pub fn read_colony_food(&self, device: &wgpu::Device, queue: &wgpu::Queue) -> i32 {
+        let staging = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("colony_food_staging"),
+            size: std::mem::size_of::<i32>() as u64,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        let mut encoder = device.create_command_encoder(&Default::default());
+        encoder.copy_buffer_to_buffer(&self.colony_food_buffer, 0, &staging, 0, 4);
+        queue.submit([encoder.finish()]);
+
+        let slice = staging.slice(..);
+        slice.map_async(wgpu::MapMode::Read, |_| {});
+        device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+
+        let data = slice.get_mapped_range();
+        let result = *bytemuck::from_bytes::<i32>(&data);
         drop(data);
         staging.unmap();
         result

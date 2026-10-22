@@ -45,6 +45,11 @@ struct SimulationInfo {
 @group(0) @binding(3) var<uniform> config: GpuConfig;
 @group(0) @binding(4) var<storage, read_write> food_grid: array<atomic<u32>>;
 @group(0) @binding(5) var<uniform> simulation_info: SimulationInfo;
+@group(0) @binding(6) var<storage, read_write> colony_food: atomic<i32>;
+
+// Colony food economy, hardcoded until the experiment settles.
+const FOOD_UNITS_PER_PICKUP: i32 = 100; // units a delivered food pixel adds to the store
+const HUNGRY_LIFETIME_FRACTION: f32 = 0.5; // ants this far into their lifetime seek a meal
 
 // Hash constants - primes used for pseudo-random number generation
 const HASH_COORD_SCALE: vec2<f32> = vec2<f32>(127.1, 311.7);
@@ -144,21 +149,46 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
     // Increment lifetime and check for death
     ant.lifetime += 1u;
 
+    var fed = false;
+    var died = false;
     if f32(ant.lifetime) >= (f32(config.ant_lifetime) * random(vec3<f32>(ant.position, f32(index)), 0.6, 1.4)) {
-        // Reset ant: teleport to colony, drop food, keep direction and type
-        ant.position = config.colony_center;
-        ant.carries_food = 0u;
-        ant.lifetime = 0u;
+        // Exhausted ants crawl back to the colony and wait to be fed. Ants
+        // already home stay put: re-firing this every tick would re-scatter
+        // the waiting crowd and look like constant spawning and dying.
+        died = true;
+        if !in_colony(ant.position) {
+            // Dying carriers drop their food where they collapse; carriers
+            // dying inside the colony deliver to the store below instead.
+            if ant.carries_food == 1u {
+                atomicStore(&food_grid[get_index(ant.position)], 1u);
+                ant.carries_food = 0u;
+            }
+            let angle = random(vec3<f32>(ant.position, f32(index)), 0.0, 6.2831853);
+            let radius = random(vec3<f32>(ant.direction, f32(index)), 0.1, 0.9) * config.colony_radius;
+            ant.position = config.colony_center + vec2<f32>(cos(angle), sin(angle)) * radius;
+        }
     }
 
     if ant.carries_food == 1u && in_colony(ant.position) {
         ant.carries_food = 0u;
         ant.direction = -ant.direction;
+        atomicAdd(&colony_food, FOOD_UNITS_PER_PICKUP);
     }
 
-    // Reset lifetime whenever any ant enters the colony
-    if in_colony(ant.position) {
-        ant.lifetime = 0u;
+    // Hungry ants in the colony eat one unit from the shared store to reset
+    // their lifetime. Concurrent eaters race on the atomic and the losers
+    // wait; losers repair the store so nothing leaks. Dying ants always try
+    // to eat: death can fire below the hunger fraction, and without this they
+    // would walk out and die again in an endless shuttle.
+    let hungry = died || f32(ant.lifetime) >= f32(config.ant_lifetime) * HUNGRY_LIFETIME_FRACTION;
+    if hungry && in_colony(ant.position) {
+        let old = atomicAdd(&colony_food, -1);
+        if old >= 1 {
+            ant.lifetime = 0u;
+            fed = true;
+        } else {
+            atomicAdd(&colony_food, 1);
+        }
     }
 
     let dir_norm = normalize(ant.direction);
@@ -233,11 +263,15 @@ fn movement_main(@builtin(global_invocation_id) id: vec3<u32>) {
         }
     }
 
-    let next = ant.position + (ant.direction * speed);
-    if next.x < 0.0 || next.x > 1.0 { ant.direction.x = -ant.direction.x; }
-    if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
+    // Hungry ants that could not eat stay in the colony until food arrives.
+    let waiting = hungry && !fed && in_colony(ant.position);
+    if !waiting {
+        let next = ant.position + (ant.direction * speed);
+        if next.x < 0.0 || next.x > 1.0 { ant.direction.x = -ant.direction.x; }
+        if next.y < 0.0 || next.y > 1.0 { ant.direction.y = -ant.direction.y; }
 
-    ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
+        ant.position = clamp(next, vec2<f32>(0.0), vec2<f32>(1.0));
+    }
     ants[index] = ant;
 
     let cell_x = clamp(u32(ant.position.x * f32(grid_info.width)), 0u, grid_info.width - 1u);

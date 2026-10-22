@@ -95,6 +95,10 @@ impl FoodGrid {
     }
 }
 
+// Anti-extinction tuning, hardcoded until the experiment settles.
+const COLONY_FOOD_SPAWN_BELOW: i32 = 1000; // open new food sources when the store drops below
+const MAX_TOTAL_FOOD_UNITS: i32 = 2000; // cap on field + colony food, prevents flooding
+
 /// Food spawner that creates initial food sources.
 /// Spawns circles of food near random edges at regular intervals.
 #[derive(Debug)]
@@ -183,6 +187,25 @@ impl FoodSpawner {
     /// Returns true if a new food source was spawned.
     pub fn try_spawn(&mut self) -> bool {
         if self.food_count() > 10 {
+            return false;
+        }
+
+        let food_circle = self.random_food_circle(self.radius);
+        self.spawn_food_circle(food_circle.center);
+        self.last_spawn_time = std::time::Instant::now();
+        true
+    }
+
+    /// Spawns a new food source when the colony store runs low. Capped by
+    /// the total food available so a starving colony cannot flood the
+    /// canvas with sources. `units_per_pixel` mirrors
+    /// FOOD_UNITS_PER_PICKUP in compute.wgsl.
+    pub fn try_spawn_for_colony(&mut self, colony_food: i32, units_per_pixel: i32) -> bool {
+        if colony_food >= COLONY_FOOD_SPAWN_BELOW {
+            return false;
+        }
+        let total_units = self.food_count() as i32 * units_per_pixel + colony_food;
+        if total_units >= MAX_TOTAL_FOOD_UNITS {
             return false;
         }
 
