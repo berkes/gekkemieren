@@ -90,8 +90,8 @@ fn carrying_ant_deposits_food_units_into_colony_store() {
 
     assert_eq!(
         sim.read_colony_food(&setup.device, &setup.queue),
-        10,
-        "a delivered food pixel should add 10 units to the colony store"
+        100,
+        "a delivered food pixel should add 100 units to the colony store"
     );
 }
 
