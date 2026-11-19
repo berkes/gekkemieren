@@ -2,6 +2,7 @@ pub mod ant;
 pub mod app;
 pub mod color_scheme;
 pub mod config;
+pub mod dashboard;
 pub mod food;
 pub mod pheromone;
 pub mod pipeline;
