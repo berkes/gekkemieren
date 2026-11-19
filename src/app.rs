@@ -13,6 +13,7 @@ use crate::{
     ant::Ant,
     color_scheme::ColorScheme,
     config::{Config, GpuConfig},
+    dashboard::{Dashboard, DashboardValues},
     food::FoodSpawner,
     pipeline::{RenderPipeline, SimulationPipeline},
     screenshot::{save_screenshot, save_state},
@@ -31,6 +32,7 @@ pub struct State {
     wgpu_setup: WgpuSetup,
     simulation: SimulationPipeline,
     pipeline: RenderPipeline,
+    dashboard: Dashboard,
     config: Config,
     frame_count: u32,
     log_timer: std::time::Instant,
@@ -83,11 +85,20 @@ impl State {
             color_scheme,
         )?;
 
+        let mut dashboard = Dashboard::new(
+            &wgpu_setup.device,
+            wgpu_setup.config.format,
+            wgpu_setup.config.width,
+            wgpu_setup.config.height,
+        )?;
+        dashboard.update(&wgpu_setup.queue, &DashboardValues::default());
+
         Ok(Self {
             window,
             wgpu_setup,
             simulation,
             pipeline,
+            dashboard,
             config,
             frame_count: 0,
             log_timer: std::time::Instant::now(),
@@ -125,6 +136,13 @@ impl State {
         }
     }
 
+    fn dashboard_values(&self) -> DashboardValues {
+        DashboardValues {
+            food_on_canvas: self.food_spawner.food_count() as u64,
+            ..Default::default()
+        }
+    }
+
     fn render(&mut self) -> anyhow::Result<()> {
         self.window.request_redraw();
         // Every 120 frames, sync state from GPU to get accurate counts
@@ -142,6 +160,12 @@ impl State {
                 0,
                 bytemuck::cast_slice(&self.food_spawner.food_grid.data),
             );
+        }
+
+        // Re-rasterize the dashboard about once per second
+        if self.frame_count.is_multiple_of(60) {
+            let values = self.dashboard_values();
+            self.dashboard.update(&self.wgpu_setup.queue, &values);
         }
 
         let output = match self.wgpu_setup.surface.get_current_texture() {
@@ -203,6 +227,7 @@ impl State {
             });
             self.pipeline
                 .draw(&mut render_pass, self.simulation.ant_count as u32);
+            self.dashboard.draw(&mut render_pass);
         }
 
         self.wgpu_setup
