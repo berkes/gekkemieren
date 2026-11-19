@@ -11,12 +11,15 @@ path = "src/main.rs"
 anyhow = "1.0.102"
 bytemuck = { version = "1.25.0", features = ["derive"] }
 chrono = "0.4"
+epaint_default_fonts = "0.35"
 env_logger = "0.11.10"
 log = "0.4.29"
 png = "0.17"
 pollster = "0.4.0"
 rand = "0.10.0"
+resvg = { version = "0.48", default-features = false, features = ["text"] }
 serde = { version = "1.0", features = ["derive"] }
+tiny-skia = "0.12"
 toml = "0.8"
 wgpu = "29.0.1"
 winit = "0.30.13"
