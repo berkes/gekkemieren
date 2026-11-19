@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="{{width}}" height="{{height}}" viewBox="0 0 {{width}} {{height}}">
+  <!-- Fullscreen transparent overlay: only the bottom bar is painted. -->
+  <g font-family="Hack, monospace">
+    <rect x="0" y="{{bar_y}}" width="{{width}}" height="150" rx="18" fill="#0f111a" fill-opacity="0.62"/>
+
+    <!-- Food brought home -->
+    <g>
+      <text x="40" y="{{bar_y_plus_42}}" font-size="17" letter-spacing="3" fill="#9aa3b2">FOOD HOME</text>
+      <text x="40" y="{{bar_y_plus_102}}" font-size="46" fill="#f5f0e6">{{food_home_total}}</text>
+      <text x="40" y="{{bar_y_plus_132}}" font-size="18" fill="#8fd0ff">{{food_home_per_min}}/min</text>
+    </g>
+
+    <!-- Food available on canvas -->
+    <g>
+      <text x="400" y="{{bar_y_plus_42}}" font-size="17" letter-spacing="3" fill="#9aa3b2">FOOD ON CANVAS</text>
+      <text x="400" y="{{bar_y_plus_102}}" font-size="46" fill="#f5f0e6">{{food_on_canvas}}</text>
+      <text x="400" y="{{bar_y_plus_132}}" font-size="18" fill="#8fd0ff">all-time {{food_deposited_total}}</text>
+    </g>
+
+    <!-- Deaths -->
+    <g>
+      <text x="760" y="{{bar_y_plus_42}}" font-size="17" letter-spacing="3" fill="#9aa3b2">DEATHS</text>
+      <text x="760" y="{{bar_y_plus_102}}" font-size="46" fill="#f5f0e6">{{deaths}}</text>
+      <text x="760" y="{{bar_y_plus_132}}" font-size="18" fill="#ff9a9a">hunger</text>
+    </g>
+
+    <!-- Gauge: food home per minute -->
+    <g transform="rotate(-90 {{gauge_cx}} {{gauge_cy}})">
+      <circle cx="{{gauge_cx}}" cy="{{gauge_cy}}" r="52" fill="none" stroke="#2a2f3d" stroke-width="10"/>
+      <circle cx="{{gauge_cx}}" cy="{{gauge_cy}}" r="52" fill="none" stroke="#8fd0ff" stroke-width="10"
+              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="{{food_home_arc}}"/>
+    </g>
+    <text x="{{gauge_cx}}" y="{{gauge_cy_plus_6}}" font-size="20" text-anchor="middle" fill="#f5f0e6">{{food_home_per_min}}</text>
+  </g>
+</svg>

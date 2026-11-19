@@ -57,33 +57,6 @@ fn create_pheromone_render_bind_group(
     })
 }
 
-fn create_hud_bind_group(
-    device: &wgpu::Device,
-    pipeline: &wgpu::RenderPipeline,
-    grid_info_buffer: &wgpu::Buffer,
-    config_buffer: &wgpu::Buffer,
-    color_scheme_buffer: &wgpu::Buffer,
-) -> wgpu::BindGroup {
-    device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("hud_bind_group"),
-        layout: &pipeline.get_bind_group_layout(0),
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: grid_info_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: config_buffer.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: color_scheme_buffer.as_entire_binding(),
-            },
-        ],
-    })
-}
-
 fn create_food_render_bind_group(
     device: &wgpu::Device,
     pipeline: &wgpu::RenderPipeline,
@@ -425,8 +398,6 @@ pub struct RenderPipeline {
     pheromone_render_bind_group: wgpu::BindGroup,
     food_render_pipeline: wgpu::RenderPipeline,
     food_render_bind_group: wgpu::BindGroup,
-    hud_pipeline: wgpu::RenderPipeline,
-    hud_bind_group: wgpu::BindGroup,
     color_scheme_buffer: wgpu::Buffer,
     pub background_color: wgpu::Color,
 }
@@ -572,44 +543,6 @@ impl RenderPipeline {
             &color_scheme_buffer,
         );
 
-        // HUD Pipeline - renders scout_ratio bar
-        let hud_shader = device.create_shader_module(wgpu::include_wgsl!("shaders/hud.wgsl"));
-        let hud_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("hud_pipeline"),
-            layout: None,
-            vertex: wgpu::VertexState {
-                module: &hud_shader,
-                entry_point: Some("vs_main"),
-                buffers: &[],
-                compilation_options: Default::default(),
-            },
-            fragment: Some(wgpu::FragmentState {
-                module: &hud_shader,
-                entry_point: Some("fs_main"),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: texture_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-                compilation_options: Default::default(),
-            }),
-            primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
-                ..Default::default()
-            },
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            multiview_mask: None,
-            cache: None,
-        });
-        let hud_bind_group = create_hud_bind_group(
-            device,
-            &hud_pipeline,
-            &simulation.grid_info_buffer,
-            &simulation.config_buffer,
-            &color_scheme_buffer,
-        );
-
         Ok(Self {
             render_pipeline,
             render_bind_group,
@@ -617,8 +550,6 @@ impl RenderPipeline {
             pheromone_render_bind_group,
             food_render_pipeline,
             food_render_bind_group,
-            hud_pipeline,
-            hud_bind_group,
             color_scheme_buffer,
             background_color,
         })
@@ -662,10 +593,5 @@ impl RenderPipeline {
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.render_bind_group, &[]);
         render_pass.draw(0..1, 0..ant_count);
-
-        // Render HUD on top
-        render_pass.set_pipeline(&self.hud_pipeline);
-        render_pass.set_bind_group(0, &self.hud_bind_group, &[]);
-        render_pass.draw(0..6, 0..1);
     }
 }
