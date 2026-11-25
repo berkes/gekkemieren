@@ -85,12 +85,7 @@ impl State {
             color_scheme,
         )?;
 
-        let mut dashboard = Dashboard::new(
-            &wgpu_setup.device,
-            wgpu_setup.config.format,
-            wgpu_setup.config.width,
-            wgpu_setup.config.height,
-        )?;
+        let mut dashboard = Dashboard::new(&wgpu_setup.device, wgpu_setup.config.format)?;
         dashboard.update(&wgpu_setup.queue, &DashboardValues::default());
 
         Ok(Self {
