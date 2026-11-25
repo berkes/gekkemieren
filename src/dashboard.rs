@@ -6,7 +6,6 @@ const RENDER_SCALE: u32 = 2;
 const BAR_HEIGHT: u32 = 150;
 const GAUGE_RADIUS: f64 = 52.0;
 const GAUGE_ARC_LENGTH: f64 = 2.0 * std::f64::consts::PI * GAUGE_RADIUS;
-const GAUGE_FULL_SCALE_PER_MIN: f64 = 600.0;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DashboardValues {
@@ -15,14 +14,14 @@ pub struct DashboardValues {
     pub food_on_canvas: u64,
     pub food_deposited_total: u64,
     pub deaths: u64,
+    pub scout_ratio: f64,
 }
 
 pub fn fill_template(template: &str, values: &DashboardValues, width: u32, height: u32) -> String {
     let bar_y = height.saturating_sub(BAR_HEIGHT);
     let gauge_cx = width.saturating_sub(110);
     let gauge_cy = bar_y + BAR_HEIGHT / 2;
-    let per_min_frac = (values.food_home_per_min / GAUGE_FULL_SCALE_PER_MIN).clamp(0.0, 1.0);
-    let gauge_arc_offset = GAUGE_ARC_LENGTH * (1.0 - per_min_frac);
+    let gauge_arc_offset = GAUGE_ARC_LENGTH * (1.0 - values.scout_ratio);
 
     let replacements = [
         ("{{width}}", width.to_string()),
@@ -45,7 +44,8 @@ pub fn fill_template(template: &str, values: &DashboardValues, width: u32, heigh
             values.food_deposited_total.to_string(),
         ),
         ("{{deaths}}", values.deaths.to_string()),
-        ("{{food_home_arc}}", format!("{:.2}", gauge_arc_offset)),
+        ("{{scout_ratio}}", format!("{:.0}%", values.scout_ratio * 100.)),
+        ("{{scout_ratio_arc}}", format!("{:.2}", gauge_arc_offset)),
     ];
 
     let mut svg = template.to_string();
@@ -221,6 +221,7 @@ mod tests {
             food_on_canvas: 987,
             food_deposited_total: 5000,
             deaths: 12,
+            scout_ratio: 0.2,
         }
     }
 
@@ -239,11 +240,11 @@ mod tests {
     #[test]
     fn gauge_arc_offset_tracks_per_minute_rate() {
         let mut v = values();
-        v.food_home_per_min = 0.0;
+        v.scout_ratio = 0.0;
         let svg = fill_template(DASHBOARD_SVG, &v, 1100, 1100);
         assert!(svg.contains(&format!("stroke-dashoffset=\"{:.2}\"", GAUGE_ARC_LENGTH)));
 
-        v.food_home_per_min = GAUGE_FULL_SCALE_PER_MIN * 2.0;
+        v.scout_ratio = 1.0;
         let svg = fill_template(DASHBOARD_SVG, &v, 1100, 1100);
         assert!(svg.contains("stroke-dashoffset=\"0.00\""));
     }

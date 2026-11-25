@@ -139,6 +139,7 @@ impl State {
     fn dashboard_values(&self) -> DashboardValues {
         DashboardValues {
             food_on_canvas: self.food_spawner.food_count() as u64,
+            scout_ratio: self.config.scout_ratio as f64,
             ..Default::default()
         }
     }

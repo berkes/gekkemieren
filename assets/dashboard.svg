@@ -24,12 +24,12 @@
       <text x="760" y="{{bar_y_plus_132}}" font-size="18" fill="#ff9a9a">hunger</text>
     </g>
 
-    <!-- Gauge: food home per minute -->
+    <!-- Gauge: gekke mieren ratio -->
     <g transform="rotate(-90 {{gauge_cx}} {{gauge_cy}})">
       <circle cx="{{gauge_cx}}" cy="{{gauge_cy}}" r="52" fill="none" stroke="#2a2f3d" stroke-width="10"/>
       <circle cx="{{gauge_cx}}" cy="{{gauge_cy}}" r="52" fill="none" stroke="#8fd0ff" stroke-width="10"
-              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="{{food_home_arc}}"/>
+              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="{{scout_ratio_arc}}"/>
     </g>
-    <text x="{{gauge_cx}}" y="{{gauge_cy_plus_6}}" font-size="20" text-anchor="middle" fill="#f5f0e6">{{food_home_per_min}}</text>
+    <text x="{{gauge_cx}}" y="{{gauge_cy_plus_6}}" font-size="20" text-anchor="middle" fill="#f5f0e6">{{scout_ratio}}</text>
   </g>
 </svg>
