@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1100" viewBox="0 0 1100 1100">
+  <!-- Fullscreen transparent overlay: only the bottom bar is painted.
+       Layout is hardcoded on purpose so this file can be edited/previewed in
+       Inkscape or an image viewer; only value and gauge placeholders are
+       substituted by code. Preview by running the render_dashboard example
+       and redirecting its output to preview.svg -->
+  <g font-family="Hack, monospace">
+    <rect x="0" y="950" width="1100" height="150" rx="18" fill="#0f111a" fill-opacity="0.62"/>
+
+    <!-- Food brought home -->
+    <g>
+      <text x="40" y="992" font-size="17" letter-spacing="3" fill="#9aa3b2">FOOD HOME</text>
+      <text x="40" y="1052" font-size="46" fill="#f5f0e6">{{food_home_total}}</text>
+      <text x="40" y="1082" font-size="18" fill="#8fd0ff">{{food_home_per_min}}/min</text>
+    </g>
+
+    <!-- Food available on canvas -->
+    <g>
+      <text x="400" y="992" font-size="17" letter-spacing="3" fill="#9aa3b2">FOOD ON CANVAS</text>
+      <text x="400" y="1052" font-size="46" fill="#f5f0e6">{{food_on_canvas}}</text>
+      <text x="400" y="1082" font-size="18" fill="#8fd0ff">all-time {{food_deposited_total}}</text>
+    </g>
+
+    <!-- Deaths -->
+    <g>
+      <text x="760" y="992" font-size="17" letter-spacing="3" fill="#9aa3b2">DEATHS</text>
+      <text x="760" y="1052" font-size="46" fill="#f5f0e6">{{deaths}}</text>
+      <text x="760" y="1082" font-size="18" fill="#ff9a9a">hunger</text>
+    </g>
+
+    <!-- Gauge: gekke mieren ratio -->
+    <g transform="rotate(-90 990 1025)">
+      <circle cx="990" cy="1025" r="52" fill="none" stroke="#2a2f3d" stroke-width="10"/>
+      <circle cx="990" cy="1025" r="52" fill="none" stroke="#8fd0ff" stroke-width="10"
+              stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="{{scout_ratio_arc}}"/>
+    </g>
+    <text x="990" y="1031" font-size="20" text-anchor="middle" fill="#f5f0e6">{{scout_ratio}}</text>
+  </g>
+</svg>
